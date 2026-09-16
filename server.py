@@ -90,52 +90,61 @@ def parse_kma_response(r, label='KMA API'):
         detail = ' / '.join(x for x in (code, msg) if x) or text[:300] or '응답 본문 없음'
         raise RuntimeError(f'{label} 응답 오류: {detail}')
 
+def _split_kma_line(line):
+    """KMA API Hub의 CSV/공백 구분 응답을 안전하게 분리합니다."""
+    line = line.strip()
+    if not line:
+        return []
+    if ',' in line:
+        return [x.strip() for x in line.split(',')]
+    return [x for x in re.split(r'\s+', line) if x]
+
+
+def _find_kma_header(lines):
+    """help=1 응답에서 실제 변수명 헤더를 찾습니다."""
+    for ln in lines:
+        h = ln.lstrip('#').strip()
+        if re.match(r'^TM(?:[,\s]+)STN(?:[,\s]+)', h):
+            return _split_kma_line(h)
+    return []
+
+
 def _parse_kma_csv(text):
-    """KMA API Hub CSV/고정폭 응답을 행 단위 dict로 변환합니다."""
+    """sfc_aws_day.php 응답을 [{tm, stn, sumRn}] 형태로 변환합니다.
+
+    중요: rn_day 요소 조회의 일자료 응답은
+    TM, STN, LON, LAT, HT, VAL, STN_KO 순서입니다.
+    기존 코드가 세 번째 값(LON)을 강수량으로 읽던 문제가 있었습니다.
+    """
     lines = [ln.strip() for ln in (text or '').splitlines() if ln.strip()]
-    data_lines = []
-    header = None
+    header = _find_kma_header(lines)
+    rows = []
     for ln in lines:
         if ln.startswith('#'):
-            h = ln.lstrip('#').strip()
-            if 'TM' in h and 'STN' in h and ('RN_DAY' in h or 'RN' in h):
-                parts = [x.strip() for x in re.split(r',|\s+', h) if x.strip()]
-                if len(parts) >= 2:
-                    header = parts
             continue
-        data_lines.append(ln)
+        parts = _split_kma_line(ln)
+        if len(parts) < 2 or not re.match(r'^\d{8,14}$', parts[0]):
+            continue
+        stn = parts[1]
+        if not stn.isdigit():
+            continue
 
-    rows = []
-    for ln in data_lines:
-        parts = [x.strip() for x in ln.split(',')] if ',' in ln else [x for x in re.split(r'\s+', ln) if x]
-        if not parts or not re.match(r'^\d{8,14}$', parts[0]):
-            continue
-        # sfc_aws_day.php?obs=rn_day의 핵심 출력은 TM, STN, RN_DAY입니다.
-        if len(parts) >= 3:
-            rows.append({'tm': parts[0], 'stn': parts[1], 'sumRn': parts[2]})
-        elif header and len(parts) >= len(header):
+        value = ''
+        station_name = ''
+        if header and len(parts) >= len(header):
             row = dict(zip(header, parts))
-            rows.append({'tm': row.get('TM',''), 'stn': row.get('STN',''), 'sumRn': row.get('RN_DAY', row.get('rn_day',''))})
+            value = row.get('VAL', row.get('RN_DAY', row.get('rn_day', '')))
+            station_name = row.get('STN_KO', '')
+        elif len(parts) >= 7:
+            # 공식 예제/자료구조: TM, STN_ID, LON, LAT, HT, VAL, STN_KO
+            value = parts[5]
+            station_name = parts[6]
+        elif len(parts) >= 3:
+            # 혹시 축약 응답이 오면 마지막 수치 필드를 사용
+            value = parts[2]
+
+        rows.append({'tm': parts[0], 'stn': stn, 'sumRn': value, 'station_name': station_name})
     return rows
-
-def aws_daily(start, end, stn):
-    require_key()
-    params = {
-        'tm1': start.replace('-', ''), 'tm2': end.replace('-', ''),
-        'obs': 'rn_day', 'stn': stn, 'disp': '1', 'help': '1',
-        'authKey': KMA_APIHUB_KEY,
-    }
-    r = requests.get(AWS_DAILY_URL, params=params, timeout=30)
-    if not r.ok:
-        raise RuntimeError(f'AWS API허브 일자료 HTTP {r.status_code}: {(r.text or "")[:200]}')
-    text = r.text or ''
-    if 'ERROR' in text.upper() and not re.search(r'\d{8,14}', text):
-        raise RuntimeError(f'AWS API허브 오류: {text[:300]}')
-    items = _parse_kma_csv(text)
-    if not items:
-        raise RuntimeError('AWS API허브 응답에서 일강수량 자료를 찾지 못했습니다.')
-    return items
-
 
 
 def dry_analysis(items, threshold=0.1):
@@ -201,42 +210,79 @@ def latest_ncst_base(now=None):
 
 
 def ultra_nowcast(region_key):
-    """기상청 API Hub AWS 시간자료에서 현재에 가까운 관측값을 조회합니다."""
+    """기상청 API Hub AWS 정시자료에서 가장 가까운 정시 관측값을 조회합니다."""
     require_key()
     info = REGIONS.get(region_key)
     if not info:
         raise RuntimeError('지원하지 않는 지역입니다.')
-    now = datetime.now() - timedelta(minutes=40)
-    tm = now.strftime('%Y%m%d%H00')
-    params = {'var': '', 'tm': tm, 'stn': info['stn'], 'disp': '1', 'help': '1', 'authKey': KMA_APIHUB_KEY}
+
+    # API Hub AWS 정시자료는 매시 정각 자료를 제공하므로 직전 정시를 사용합니다.
+    now = datetime.now()
+    tm_dt = now.replace(minute=0, second=0, microsecond=0) - timedelta(minutes=60)
+    tm = tm_dt.strftime('%Y%m%d%H%M')
+    params = {
+        'tm': tm,
+        'stn': info['stn'],
+        'disp': '1',
+        'help': '1',
+        'authKey': KMA_APIHUB_KEY,
+    }
     r = requests.get(AWS_HOURLY_URL, params=params, timeout=20)
     if not r.ok:
-        raise RuntimeError(f'AWS API허브 시간자료 HTTP {r.status_code}: {(r.text or "")[:200]}')
+        raise RuntimeError(f'AWS API허브 시간자료 HTTP {r.status_code}: {(r.text or "")[:300]}')
+
     text = r.text or ''
-    lines = [ln.strip() for ln in text.splitlines() if ln.strip() and not ln.lstrip().startswith('#')]
+    lines = [ln.strip() for ln in text.splitlines() if ln.strip()]
+    header = _find_kma_header(lines)
     row = None
     for ln in lines:
-        parts = [x.strip() for x in ln.split(',')] if ',' in ln else [x for x in re.split(r'\s+', ln) if x]
-        if len(parts) >= 2 and parts[0].isdigit() and info['stn'] in parts[:3]:
+        if ln.startswith('#'):
+            continue
+        parts = _split_kma_line(ln)
+        if len(parts) >= 2 and re.match(r'^\d{8,14}$', parts[0]) and parts[1] == info['stn']:
             row = parts
             break
     if row is None:
-        raise RuntimeError('AWS API허브 시간자료에서 해당 관측소 자료를 찾지 못했습니다.')
-    # help=1/disp=1 응답의 필드명은 환경에 따라 달라질 수 있으므로 헤더를 함께 찾아 값 매핑
-    headers = []
-    for ln in text.splitlines():
-        h = ln.lstrip('#').strip()
-        if 'TM' in h and 'STN' in h:
-            headers = [x.strip() for x in re.split(r',|\s+', h) if x.strip()]
-            break
-    vals = dict(zip(headers, row)) if headers and len(row) >= len(headers) else {}
+        # 1시간 전 자료가 아직 없으면 현재 시각 기준 가장 가까운 자료를 한 번 더 조회
+        params['tm'] = now.strftime('%Y%m%d%H00')
+        r2 = requests.get(AWS_HOURLY_URL, params=params, timeout=20)
+        if not r2.ok:
+            raise RuntimeError(f'AWS API허브 시간자료 HTTP {r2.status_code}: {(r2.text or "")[:300]}')
+        text = r2.text or ''
+        lines = [ln.strip() for ln in text.splitlines() if ln.strip()]
+        header = _find_kma_header(lines)
+        for ln in lines:
+            if ln.startswith('#'):
+                continue
+            parts = _split_kma_line(ln)
+            if len(parts) >= 2 and re.match(r'^\d{8,14}$', parts[0]) and parts[1] == info['stn']:
+                row = parts
+                break
+    if row is None:
+        raise RuntimeError(f'AWS API허브 시간자료에서 {info["station_name"]}({info["stn"]}) 자료를 찾지 못했습니다.')
+
+    vals = dict(zip(header, row)) if header and len(row) >= len(header) else {}
+    def val(*names):
+        for name in names:
+            if name in vals and vals[name] not in ('', '-99', '-99.0'):
+                return vals[name]
+        return None
+
+    obs_tm = row[0]
     return {
-        'regionKey': region_key, 'region': info['name'], 'station': info['station_name'],
-        'baseDate': tm[:8], 'baseTime': tm[8:],
-        'rain1h': vals.get('RN_HR1') or vals.get('RN'),
-        'rainDay': vals.get('RN_DAY'), 'temp': vals.get('TA'),
-        'humidity': vals.get('HM'), 'wind': vals.get('WS'), 'status': 'ok',
+        'regionKey': region_key,
+        'region': info['name'],
+        'station': info['station_name'],
+        'baseDate': obs_tm[:8],
+        'baseTime': obs_tm[8:] if len(obs_tm) >= 10 else '',
+        'rain1h': val('RN_HR1'),
+        'rainDay': val('RN_DAY'),
+        'temp': val('TA'),
+        'humidity': val('HM'),
+        'wind': val('WS'),
+        'status': 'ok',
     }
+
 
 def latest_base_time(now=None):
     now = now or datetime.now()
