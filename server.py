@@ -2,7 +2,11 @@ from flask import Flask, jsonify, request, send_from_directory
 from urllib.parse import unquote
 import re
 import os, math, requests, xml.etree.ElementTree as ET
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
+try:
+    from zoneinfo import ZoneInfo
+except ImportError:
+    ZoneInfo = None
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 HTML_FILE = 'index.html'
@@ -59,6 +63,11 @@ def require_data_go_key():
         raise RuntimeError('단기예보 기능에는 DATA_GO_KR_SERVICE_KEY가 필요합니다. 기상청 API허브 인증키만 사용하는 경우 일자료/실황 기능은 정상 동작합니다.')
 
 
+def now_kst():
+    if ZoneInfo:
+        return datetime.now(ZoneInfo('Asia/Seoul'))
+    return datetime.now(timezone(timedelta(hours=9)))
+
 def normalize_key(key: str) -> str:
     # Encoding 키를 붙여넣어도 requests가 재인코딩하지 않도록 decoding 처리
     return unquote(key)
@@ -110,11 +119,10 @@ def _find_kma_header(lines):
 
 
 def _parse_kma_csv(text):
-    """sfc_aws_day.php 응답을 [{tm, stn, sumRn}] 형태로 변환합니다.
+    """KMA API Hub 응답을 최대한 안전하게 파싱합니다.
 
-    중요: rn_day 요소 조회의 일자료 응답은
-    TM, STN, LON, LAT, HT, VAL, STN_KO 순서입니다.
-    기존 코드가 세 번째 값(LON)을 강수량으로 읽던 문제가 있었습니다.
+    disp=1을 사용하면 콤마 구분 CSV가 반환되므로 이를 우선 사용하고,
+    혹시 고정폭 응답이 오더라도 헤더/필드명을 이용해 최대한 처리합니다.
     """
     lines = [ln.strip() for ln in (text or '').splitlines() if ln.strip()]
     header = _find_kma_header(lines)
@@ -125,27 +133,78 @@ def _parse_kma_csv(text):
         parts = _split_kma_line(ln)
         if len(parts) < 2 or not re.match(r'^\d{8,14}$', parts[0]):
             continue
-        stn = parts[1]
+        stn = parts[1].strip()
         if not stn.isdigit():
             continue
-
-        value = ''
-        station_name = ''
-        if header and len(parts) >= len(header):
-            row = dict(zip(header, parts))
-            value = row.get('VAL', row.get('RN_DAY', row.get('rn_day', '')))
-            station_name = row.get('STN_KO', '')
-        elif len(parts) >= 7:
-            # 공식 예제/자료구조: TM, STN_ID, LON, LAT, HT, VAL, STN_KO
-            value = parts[5]
-            station_name = parts[6]
-        elif len(parts) >= 3:
-            # 혹시 축약 응답이 오면 마지막 수치 필드를 사용
-            value = parts[2]
-
-        rows.append({'tm': parts[0], 'stn': stn, 'sumRn': value, 'station_name': station_name})
+        row = dict(zip(header, parts)) if header and len(parts) >= len(header) else {}
+        rows.append(row | {'_parts': parts, 'tm': parts[0], 'stn': stn})
     return rows
 
+
+def _row_value(row, *names, fallback_index=None):
+    for name in names:
+        for k, v in row.items():
+            if str(k).upper() == name.upper() and v not in ('', None, '-9', '-99', '-999'):
+                return v
+    if fallback_index is not None:
+        parts = row.get('_parts', [])
+        if len(parts) > fallback_index:
+            return parts[fallback_index]
+    return None
+
+
+def aws_daily(start_date, end_date, stn):
+    """기상청 API허브 AWS 일강수량(rn_day) 조회."""
+    require_key()
+    params = {
+        'tm1': start_date.replace('-', ''),
+        'tm2': end_date.replace('-', ''),
+        'obs': 'rn_day',
+        'stn': str(stn),
+        'disp': '1',
+        'help': '1',
+        'authKey': normalize_key(KMA_APIHUB_KEY),
+    }
+    r = requests.get(AWS_DAILY_URL, params=params, timeout=20)
+    if not r.ok:
+        raise RuntimeError(f'AWS 일자료 API허브 HTTP {r.status_code}: {(r.text or "")[:500]}')
+    text = r.text or ''
+    rows = _parse_kma_csv(text)
+    items = []
+    for row in rows:
+        parts = row.get('_parts', [])
+        # rn_day 요소 조회의 대표 응답은 TM, STN, LON, LAT, HT, VAL, STN_KO
+        value = _row_value(row, 'VAL', 'RN_DAY', 'RN_DAY(mm)', fallback_index=5)
+        station_name = _row_value(row, 'STN_KO', 'STN_NAME', fallback_index=6) or ''
+        items.append({'tm': row['tm'], 'stn': row['stn'], 'sumRn': value, 'station_name': station_name})
+    if not items:
+        raise RuntimeError(f'AWS 일자료에서 {stn} 관측자료를 찾지 못했습니다. 응답: {text[:300]}')
+    return items
+
+
+def aws_hourly_snapshot(tm, stns):
+    """AWS 정시자료를 한 번에 받아 여러 지점의 TA/HM/WS/RN_HR1을 추출합니다."""
+    require_key()
+    params = {
+        'tm': tm, 'stn': ':'.join(map(str, stns)),
+        'disp': '1', 'help': '1', 'authKey': normalize_key(KMA_APIHUB_KEY),
+    }
+    r = requests.get(AWS_HOURLY_URL, params=params, timeout=20)
+    if not r.ok:
+        raise RuntimeError(f'AWS 정시자료 HTTP {r.status_code}: {(r.text or "")[:500]}')
+    rows = _parse_kma_csv(r.text or '')
+    out = {}
+    for row in rows:
+        stn = row['stn']
+        out[stn] = {
+            'tm': row['tm'],
+            'TA': _row_value(row, 'TA'),
+            'HM': _row_value(row, 'HM'),
+            'WS': _row_value(row, 'WS'),
+            'RN_HR1': _row_value(row, 'RN_HR1'),
+            'RN_DAY': _row_value(row, 'RN_DAY'),
+        }
+    return out
 
 def dry_analysis(items, threshold=0.1):
     rows = []
@@ -204,85 +263,29 @@ def dfs_xy(lat, lon):
 
 
 def latest_ncst_base(now=None):
-    """초단기실황은 매시각 자료가 생성되므로 API 반영 지연을 고려해 약 40분 전의 정시 자료를 사용합니다."""
-    t = (now or datetime.now()) - timedelta(minutes=40)
-    return t.strftime('%Y%m%d'), t.strftime('%H00')
+    return (now or now_kst()).strftime('%Y%m%d'), (now or now_kst()).strftime('%H00')
 
 
-def ultra_nowcast(region_key):
-    """기상청 API Hub AWS 정시자료에서 가장 가까운 정시 관측값을 조회합니다."""
+def ultra_nowcast(region_key, snapshot=None, snapshot_tm=None):
+    """기상청 API허브 AWS 정시자료에서 최근 관측값을 조회합니다."""
     require_key()
     info = REGIONS.get(region_key)
     if not info:
         raise RuntimeError('지원하지 않는 지역입니다.')
-
-    # API Hub AWS 정시자료는 매시 정각 자료를 제공하므로 직전 정시를 사용합니다.
-    now = datetime.now()
-    tm_dt = now.replace(minute=0, second=0, microsecond=0) - timedelta(minutes=60)
+    now = now_kst()
+    tm_dt = now.replace(minute=0, second=0, microsecond=0) - timedelta(hours=1)
     tm = tm_dt.strftime('%Y%m%d%H%M')
-    params = {
-        'tm': tm,
-        'stn': info['stn'],
-        'disp': '1',
-        'help': '1',
-        'authKey': KMA_APIHUB_KEY,
-    }
-    r = requests.get(AWS_HOURLY_URL, params=params, timeout=20)
-    if not r.ok:
-        raise RuntimeError(f'AWS API허브 시간자료 HTTP {r.status_code}: {(r.text or "")[:300]}')
-
-    text = r.text or ''
-    lines = [ln.strip() for ln in text.splitlines() if ln.strip()]
-    header = _find_kma_header(lines)
-    row = None
-    for ln in lines:
-        if ln.startswith('#'):
-            continue
-        parts = _split_kma_line(ln)
-        if len(parts) >= 2 and re.match(r'^\d{8,14}$', parts[0]) and parts[1] == info['stn']:
-            row = parts
-            break
-    if row is None:
-        # 1시간 전 자료가 아직 없으면 현재 시각 기준 가장 가까운 자료를 한 번 더 조회
-        params['tm'] = now.strftime('%Y%m%d%H00')
-        r2 = requests.get(AWS_HOURLY_URL, params=params, timeout=20)
-        if not r2.ok:
-            raise RuntimeError(f'AWS API허브 시간자료 HTTP {r2.status_code}: {(r2.text or "")[:300]}')
-        text = r2.text or ''
-        lines = [ln.strip() for ln in text.splitlines() if ln.strip()]
-        header = _find_kma_header(lines)
-        for ln in lines:
-            if ln.startswith('#'):
-                continue
-            parts = _split_kma_line(ln)
-            if len(parts) >= 2 and re.match(r'^\d{8,14}$', parts[0]) and parts[1] == info['stn']:
-                row = parts
-                break
-    if row is None:
-        raise RuntimeError(f'AWS API허브 시간자료에서 {info["station_name"]}({info["stn"]}) 자료를 찾지 못했습니다.')
-
-    vals = dict(zip(header, row)) if header and len(row) >= len(header) else {}
-    def val(*names):
-        for name in names:
-            if name in vals and vals[name] not in ('', '-99', '-99.0'):
-                return vals[name]
-        return None
-
-    obs_tm = row[0]
+    snapshot = snapshot if snapshot is not None else aws_hourly_snapshot(tm, [info['stn']])
+    vals = snapshot.get(info['stn'], {})
+    if not vals:
+        raise RuntimeError(f'{info["station_name"]}({info["stn"]})의 {tm} 정시자료가 없습니다.')
     return {
-        'regionKey': region_key,
-        'region': info['name'],
-        'station': info['station_name'],
-        'baseDate': obs_tm[:8],
-        'baseTime': obs_tm[8:] if len(obs_tm) >= 10 else '',
-        'rain1h': val('RN_HR1'),
-        'rainDay': val('RN_DAY'),
-        'temp': val('TA'),
-        'humidity': val('HM'),
-        'wind': val('WS'),
+        'regionKey': region_key, 'region': info['name'], 'station': info['station_name'],
+        'baseDate': tm[:8], 'baseTime': tm[8:],
+        'rain1h': vals.get('RN_HR1'), 'rainDay': vals.get('RN_DAY'),
+        'temp': vals.get('TA'), 'humidity': vals.get('HM'), 'wind': vals.get('WS'),
         'status': 'ok',
     }
-
 
 def latest_base_time(now=None):
     now = now or datetime.now()
@@ -359,7 +362,7 @@ def daily():
         except ValueError:
             raise RuntimeError('날짜 형식은 YYYY-MM-DD여야 합니다.')
 
-        latest_available = (datetime.now() - timedelta(days=1)).date()
+        latest_available = (now_kst() - timedelta(days=1)).date()
         if start_dt > latest_available:
             raise RuntimeError(f'AWS 일자료는 {latest_available.isoformat()}까지 조회할 수 있습니다.')
         if end_dt > latest_available:
@@ -371,8 +374,12 @@ def daily():
         actual_end = end_dt.isoformat()
 
         results = []
+        # 같은 AWS(933)를 사용하는 금남면/진교면은 한 번만 조회합니다.
+        station_items = {}
+        for stn in sorted({info['stn'] for info in REGIONS.values()}):
+            station_items[stn] = aws_daily(actual_start, actual_end, stn)
         for info in REGIONS.values():
-            items = aws_daily(actual_start, actual_end, info['stn'])
+            items = station_items.get(info['stn'], [])
             latest, max_run, qualifying, current_run = dry_analysis(items, threshold)
             results.append({
                 'region': info['name'], 'station': info['station_name'], 'status': 'ok',
@@ -396,17 +403,21 @@ def live():
         requested = request.args.get('region')
         keys = [requested] if requested else list(REGIONS.keys())
         results = []
-        for key in keys:
-            if key not in REGIONS:
-                continue
-            try:
-                results.append(ultra_nowcast(key))
-            except Exception as e:
-                print(f'[KMA LIVE ERROR {key}]', repr(e), flush=True)
-                results.append({
-                    'regionKey': key, 'region': REGIONS[key]['name'],
-                    'status': 'error', 'message': str(e)
-                })
+        selected = [k for k in keys if k in REGIONS]
+        unique_stns = sorted({REGIONS[k]['stn'] for k in selected})
+        now = now_kst()
+        tm_dt = now.replace(minute=0, second=0, microsecond=0) - timedelta(hours=1)
+        tm = tm_dt.strftime('%Y%m%d%H%M')
+        try:
+            snapshot = aws_hourly_snapshot(tm, unique_stns)
+            for key in selected:
+                try:
+                    results.append(ultra_nowcast(key, snapshot=snapshot, snapshot_tm=tm))
+                except Exception as e:
+                    results.append({'regionKey': key, 'region': REGIONS[key]['name'], 'status': 'error', 'message': str(e)})
+        except Exception as e:
+            for key in selected:
+                results.append({'regionKey': key, 'region': REGIONS[key]['name'], 'status': 'error', 'message': str(e)})
         any_ok = any(x.get('status') == 'ok' for x in results)
         return jsonify(ok=any_ok, results=results,
                        note='초단기실황 RN1은 최근 1시간 강수량이며 당일 확정 일강수량이 아닙니다.')
