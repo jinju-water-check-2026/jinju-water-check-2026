@@ -1,5 +1,6 @@
 from flask import Flask, jsonify, request, send_from_directory
 from urllib.parse import unquote
+import re
 import os, math, requests, xml.etree.ElementTree as ET
 from datetime import datetime, timedelta
 
@@ -7,7 +8,7 @@ BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 HTML_FILE = 'index.html'
 app = Flask(__name__, static_folder=None)
 
-# 공공데이터포털(data.go.kr)에서 발급받은 일반 인증키(Decoding)를 환경변수에 넣으세요.
+# 기상청 API허브 인증키는 Render 환경변수 KMA_SERVICE_KEY에 저장합니다.
 def load_service_key():
     # 1) 환경변수가 있으면 우선 사용
     env_key = os.environ.get('KMA_SERVICE_KEY', '').strip()
@@ -22,11 +23,16 @@ def load_service_key():
     except FileNotFoundError:
         return ''
 
-    if not key or key == 'PASTE_YOUR_DATA_GO_KR_API_KEY_HERE':
+    if not key or key == 'PASTE_YOUR_KMA_APIHUB_KEY_HERE':
         return ''
     return key
 
-SERVICE_KEY = load_service_key()
+KMA_APIHUB_KEY = load_service_key()
+
+def load_data_go_key():
+    return os.environ.get('DATA_GO_KR_SERVICE_KEY', '').strip()
+
+DATA_GO_KEY = load_data_go_key()
 
 # 지역별 대표 방재기상관측(AWS)을 사용합니다.
 # 금남면·진교면은 금남 AWS(933), 곤양면은 사천 AWS(917)을 대표 관측지점으로 지정합니다.
@@ -37,16 +43,20 @@ REGIONS = {
     'gonyang': {'name': '사천시 곤양면', 'stn': '917', 'station_name': '사천 AWS(917)', 'lat': 35.03695, 'lon': 128.06768},
 }
 
-AWS_DAILY_URL = 'http://apis.data.go.kr/1360000/AwsDalyInfoService/getWthrDataList'
-ASOS_URL = 'http://apis.data.go.kr/1360000/AsosDalyInfoService/getWthrDataList'
+AWS_DAILY_URL = 'https://apihub.kma.go.kr/api/typ01/url/sfc_aws_day.php'
+AWS_HOURLY_URL = 'https://apihub.kma.go.kr/api/typ01/url/awsh.php'
 
 FCST_URL = 'https://apis.data.go.kr/1360000/VilageFcstInfoService_2.0/getVilageFcst'
 NCST_URL = 'https://apis.data.go.kr/1360000/VilageFcstInfoService_2.0/getUltraSrtNcst'
 
 
 def require_key():
-    if not SERVICE_KEY:
-        raise RuntimeError('공공데이터포털 인증키가 설정되지 않았습니다. config/api_key.txt에 인증키를 저장해 주세요.')
+    if not KMA_APIHUB_KEY:
+        raise RuntimeError('기상청 API허브 인증키가 설정되지 않았습니다. Render 환경변수 KMA_SERVICE_KEY를 확인해 주세요.')
+
+def require_data_go_key():
+    if not DATA_GO_KEY:
+        raise RuntimeError('단기예보 기능에는 DATA_GO_KR_SERVICE_KEY가 필요합니다. 기상청 API허브 인증키만 사용하는 경우 일자료/실황 기능은 정상 동작합니다.')
 
 
 def normalize_key(key: str) -> str:
@@ -80,76 +90,59 @@ def parse_kma_response(r, label='KMA API'):
         detail = ' / '.join(x for x in (code, msg) if x) or text[:300] or '응답 본문 없음'
         raise RuntimeError(f'{label} 응답 오류: {detail}')
 
+def _parse_kma_csv(text):
+    """KMA API Hub CSV/고정폭 응답을 행 단위 dict로 변환합니다."""
+    lines = [ln.strip() for ln in (text or '').splitlines() if ln.strip()]
+    data_lines = []
+    header = None
+    for ln in lines:
+        if ln.startswith('#'):
+            h = ln.lstrip('#').strip()
+            if 'TM' in h and 'STN' in h and ('RN_DAY' in h or 'RN' in h):
+                parts = [x.strip() for x in re.split(r',|\s+', h) if x.strip()]
+                if len(parts) >= 2:
+                    header = parts
+            continue
+        data_lines.append(ln)
+
+    rows = []
+    for ln in data_lines:
+        parts = [x.strip() for x in ln.split(',')] if ',' in ln else [x for x in re.split(r'\s+', ln) if x]
+        if not parts or not re.match(r'^\d{8,14}$', parts[0]):
+            continue
+        # sfc_aws_day.php?obs=rn_day의 핵심 출력은 TM, STN, RN_DAY입니다.
+        if len(parts) >= 3:
+            rows.append({'tm': parts[0], 'stn': parts[1], 'sumRn': parts[2]})
+        elif header and len(parts) >= len(header):
+            row = dict(zip(header, parts))
+            rows.append({'tm': row.get('TM',''), 'stn': row.get('STN',''), 'sumRn': row.get('RN_DAY', row.get('rn_day',''))})
+    return rows
+
 def aws_daily(start, end, stn):
     require_key()
     params = {
-        'ServiceKey': normalize_key(SERVICE_KEY),
-        'pageNo': '1', 'numOfRows': '999', 'dataType': 'XML',
-        'dataCd': 'AWS', 'dateCd': 'DAY',
-        'startDt': start.replace('-', ''), 'endDt': end.replace('-', ''),
-        'stnIds': stn,
+        'tm1': start.replace('-', ''), 'tm2': end.replace('-', ''),
+        'obs': 'rn_day', 'stn': stn, 'disp': '1', 'help': '1',
+        'authKey': KMA_APIHUB_KEY,
     }
     r = requests.get(AWS_DAILY_URL, params=params, timeout=30)
     if not r.ok:
-        raise RuntimeError(f'AWS 일자료 API HTTP {r.status_code}')
+        raise RuntimeError(f'AWS API허브 일자료 HTTP {r.status_code}: {(r.text or "")[:200]}')
     text = r.text or ''
-    try:
-        root = ET.fromstring(text)
-    except Exception as e:
-        raise RuntimeError('AWS 일자료 XML 응답을 읽지 못했습니다.') from e
-    code = (root.findtext('.//resultCode') or root.findtext('.//returnReasonCode') or '').strip()
-    msg = (root.findtext('.//resultMsg') or root.findtext('.//returnAuthMsg') or '').strip()
-    if code not in ('00', '0'):
-        raise RuntimeError(f'AWS API 오류 {code}: {msg or "알 수 없는 오류"}')
-    items = []
-    for item in root.findall('.//item'):
-        row = {}
-        for child in list(item):
-            row[child.tag] = child.text or ''
-        items.append(row)
+    if 'ERROR' in text.upper() and not re.search(r'\d{8,14}', text):
+        raise RuntimeError(f'AWS API허브 오류: {text[:300]}')
+    items = _parse_kma_csv(text)
+    if not items:
+        raise RuntimeError('AWS API허브 응답에서 일강수량 자료를 찾지 못했습니다.')
     return items
 
-
-def asos_daily(start, end, stn='192'):
-    require_key()
-    # 공공데이터포털 ASOS 공식 명세와 동일하게 HTTP + ServiceKey + XML 사용
-    # (브라우저의 OpenAPI 테스트와 같은 호출 방식)
-    params = {
-        'ServiceKey': normalize_key(SERVICE_KEY),
-        'pageNo': '1', 'numOfRows': '999', 'dataType': 'XML',
-        'dataCd': 'ASOS', 'dateCd': 'DAY',
-        'startDt': start.replace('-', ''), 'endDt': end.replace('-', ''),
-        'stnIds': stn,
-    }
-    r = requests.get(ASOS_URL, params=params, timeout=30)
-    if not r.ok:
-        # 인증키가 포함된 전체 URL은 로그에 남기지 않음
-        raise RuntimeError(f'ASOS 일자료 API HTTP {r.status_code}')
-
-    text = r.text or ''
-    try:
-        root = ET.fromstring(text)
-    except Exception as e:
-        raise RuntimeError('ASOS 일자료 XML 응답을 읽지 못했습니다.') from e
-
-    code = (root.findtext('.//resultCode') or root.findtext('.//returnReasonCode') or '').strip()
-    msg = (root.findtext('.//resultMsg') or root.findtext('.//returnAuthMsg') or '').strip()
-    if code not in ('00', '0'):
-        raise RuntimeError(f'ASOS API 오류 {code}: {msg or "알 수 없는 오류"}')
-
-    items = []
-    for item in root.findall('.//item'):
-        row = {}
-        for child in list(item):
-            row[child.tag] = child.text or ''
-        items.append(row)
-    return items
 
 
 def dry_analysis(items, threshold=0.1):
     rows = []
     for x in items:
-        date = str(x.get('tm', ''))[:10]
+        raw_date = str(x.get('tm', ''))
+        date = f'{raw_date[:4]}-{raw_date[4:6]}-{raw_date[6:8]}' if len(raw_date) >= 8 and raw_date[:8].isdigit() else raw_date[:10]
         raw = x.get('sumRn')
         try:
             rain = float(raw) if raw not in ('', None) else 0.0
@@ -208,38 +201,41 @@ def latest_ncst_base(now=None):
 
 
 def ultra_nowcast(region_key):
-    """단기예보 조회서비스의 초단기실황(getUltraSrtNcst)으로 현재에 가까운 AWS 대표 관측값을 조회합니다."""
+    """기상청 API Hub AWS 시간자료에서 현재에 가까운 관측값을 조회합니다."""
     require_key()
     info = REGIONS.get(region_key)
     if not info:
         raise RuntimeError('지원하지 않는 지역입니다.')
-    nx, ny = dfs_xy(info['lat'], info['lon'])
-    base_date, base_time = latest_ncst_base()
-    params = {
-        'serviceKey': normalize_key(SERVICE_KEY),
-        'pageNo': '1', 'numOfRows': '1000', 'dataType': 'JSON',
-        'base_date': base_date, 'base_time': base_time,
-        'nx': str(nx), 'ny': str(ny),
-    }
-    r = requests.get(NCST_URL, params=params, timeout=20)
-    data = parse_kma_response(r, '초단기실황 API')
-    header = data.get('response', {}).get('header', {})
-    if str(header.get('resultCode', '')) not in ('00', '0'):
-        raise RuntimeError(header.get('resultMsg', '초단기실황 API 오류'))
-    raw = data.get('response', {}).get('body', {}).get('items', {}).get('item', []) or []
-    vals = {x.get('category'): x.get('obsrValue') for x in raw}
+    now = datetime.now() - timedelta(minutes=40)
+    tm = now.strftime('%Y%m%d%H00')
+    params = {'var': '', 'tm': tm, 'stn': info['stn'], 'disp': '1', 'help': '1', 'authKey': KMA_APIHUB_KEY}
+    r = requests.get(AWS_HOURLY_URL, params=params, timeout=20)
+    if not r.ok:
+        raise RuntimeError(f'AWS API허브 시간자료 HTTP {r.status_code}: {(r.text or "")[:200]}')
+    text = r.text or ''
+    lines = [ln.strip() for ln in text.splitlines() if ln.strip() and not ln.lstrip().startswith('#')]
+    row = None
+    for ln in lines:
+        parts = [x.strip() for x in ln.split(',')] if ',' in ln else [x for x in re.split(r'\s+', ln) if x]
+        if len(parts) >= 2 and parts[0].isdigit() and info['stn'] in parts[:3]:
+            row = parts
+            break
+    if row is None:
+        raise RuntimeError('AWS API허브 시간자료에서 해당 관측소 자료를 찾지 못했습니다.')
+    # help=1/disp=1 응답의 필드명은 환경에 따라 달라질 수 있으므로 헤더를 함께 찾아 값 매핑
+    headers = []
+    for ln in text.splitlines():
+        h = ln.lstrip('#').strip()
+        if 'TM' in h and 'STN' in h:
+            headers = [x.strip() for x in re.split(r',|\s+', h) if x.strip()]
+            break
+    vals = dict(zip(headers, row)) if headers and len(row) >= len(headers) else {}
     return {
-        'regionKey': region_key,
-        'region': info['name'],
-        'grid': {'nx': nx, 'ny': ny},
-        'baseDate': base_date,
-        'baseTime': base_time,
-        'rain1h': vals.get('RN1'),
-        'pty': vals.get('PTY'),
-        'temp': vals.get('T1H'),
-        'humidity': vals.get('REH'),
-        'wind': vals.get('WSD'),
-        'status': 'ok',
+        'regionKey': region_key, 'region': info['name'], 'station': info['station_name'],
+        'baseDate': tm[:8], 'baseTime': tm[8:],
+        'rain1h': vals.get('RN_HR1') or vals.get('RN'),
+        'rainDay': vals.get('RN_DAY'), 'temp': vals.get('TA'),
+        'humidity': vals.get('HM'), 'wind': vals.get('WS'), 'status': 'ok',
     }
 
 def latest_base_time(now=None):
@@ -255,14 +251,14 @@ def latest_base_time(now=None):
 
 
 def forecast(region_key):
-    require_key()
+    require_data_go_key()
     info = REGIONS.get(region_key)
     if not info:
         raise RuntimeError('지원하지 않는 지역입니다.')
     nx, ny = dfs_xy(info['lat'], info['lon'])
     base_date, base_time = latest_base_time()
     params = {
-        'serviceKey': normalize_key(SERVICE_KEY), 'pageNo': '1', 'numOfRows': '1000',
+        'serviceKey': normalize_key(DATA_GO_KEY), 'pageNo': '1', 'numOfRows': '1000',
         'dataType': 'JSON', 'base_date': base_date, 'base_time': base_time,
         'nx': str(nx), 'ny': str(ny),
     }
@@ -295,13 +291,8 @@ def home():
 def status():
     try:
         require_key()
-        # 실제 AWS 일자료 API를 지역별 대표 관측지점에 대해 확인
-        d = (datetime.now() - timedelta(days=2)).strftime('%Y-%m-%d')
-        checked = {}
-        for k, v in REGIONS.items():
-            aws_daily(d, d, v['stn'])
-            checked[k] = {'name': v['station_name'], 'stn': v['stn']}
-        return jsonify(ok=True, stations=checked)
+        checked = {k: {'name': v['station_name'], 'stn': v['stn']} for k, v in REGIONS.items()}
+        return jsonify(ok=True, api='KMA API Hub', stations=checked)
     except Exception as e:
         print('[KMA STATUS ERROR]', repr(e), flush=True)
         return jsonify(ok=False, message=str(e)), 500
@@ -315,8 +306,7 @@ def daily():
         if not start or not end:
             raise RuntimeError('start, end 날짜가 필요합니다.')
 
-        # ASOS 일자료는 당일 자료를 제공하지 않고 전날(D-1)까지만 제공함.
-        # 프런트에서 실수로 오늘 날짜를 보내더라도 서버가 자동으로 어제로 보정한다.
+        # AWS 일자료는 관측자료 기준으로 안전하게 어제(D-1)까지만 조회합니다.
         try:
             start_dt = datetime.strptime(start, '%Y-%m-%d').date()
             end_dt = datetime.strptime(end, '%Y-%m-%d').date()
@@ -325,7 +315,7 @@ def daily():
 
         latest_available = (datetime.now() - timedelta(days=1)).date()
         if start_dt > latest_available:
-            raise RuntimeError(f'ASOS 일자료는 {latest_available.isoformat()}까지 조회할 수 있습니다.')
+            raise RuntimeError(f'AWS 일자료는 {latest_available.isoformat()}까지 조회할 수 있습니다.')
         if end_dt > latest_available:
             end_dt = latest_available
         if start_dt > end_dt:

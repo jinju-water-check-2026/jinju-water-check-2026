@@ -9,3 +9,5 @@ services:
     envVars:
       - key: KMA_SERVICE_KEY
         sync: false
+      - key: DATA_GO_KR_SERVICE_KEY
+        sync: false

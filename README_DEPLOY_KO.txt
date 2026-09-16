@@ -1,27 +1,23 @@
-2026 진주지사 3종 수중기초점검 - Render 웹배포용
+2026년 진주지사 관내 3종 수중기초점검 - Render 배포 안내
 
-[중요]
-- 실제 공공데이터포털 인증키는 이 ZIP/깃허브에 넣지 마세요.
-- Render 배포 화면에서 KMA_SERVICE_KEY 환경변수 값으로만 입력하세요.
-- 인증키 계정에는 다음 2개 API 활용승인이 필요합니다.
-  1) 기상청_자동기상관측(AWS) 조회서비스
-  2) 기상청_단기예보 조회서비스
+1. GitHub 저장소 루트에 다음 파일을 올립니다.
+   index.html
+   server.py
+   requirements.txt
+   render.yaml
+   .python-version
+   README_DEPLOY_KO.txt
 
-[배포 순서]
-1. GitHub에서 새 저장소를 만듭니다. 예: jinju-water-check
-2. 이 ZIP을 풀고, 폴더 안의 파일 6개를 GitHub 저장소에 업로드합니다.
-   - index.html
-   - server.py
-   - requirements.txt
-   - render.yaml
-   - .python-version
-   - README_DEPLOY_KO.txt
-3. Render에서 New > Blueprint를 선택하고 방금 만든 GitHub 저장소를 연결합니다.
-4. Render가 KMA_SERVICE_KEY 값을 요구하면 공공데이터포털 인증키 전체를 붙여넣습니다.
-5. 배포가 완료되면 https://<서비스명>.onrender.com 형태의 링크가 생성됩니다.
-6. 그 링크 하나만 다른 직원에게 전달하면 됩니다. 상대방은 Python 설치가 필요 없습니다.
+2. Render > Environment에서 KMA_SERVICE_KEY에 기상청 API허브 인증키를 입력합니다.
+   - 인증키를 GitHub/ZIP에 넣지 마세요.
+   - 저장 시 'Save, rebuild, and deploy'를 선택하세요.
 
-[설정]
-- Render 서비스명 기본값: jinju-water-check
-- Build Command: pip install -r requirements.txt
-- Start Command: gunicorn server:app --bind 0.0.0.0:$PORT --workers 2 --threads 4 --timeout 60
+3. DATA_GO_KR_SERVICE_KEY는 단기예보 기능을 계속 사용할 경우에만 입력합니다.
+   - 기상청 API허브 인증키와 data.go.kr 인증키는 서로 다른 인증 체계입니다.
+   - AWS 일자료/실황 기능은 KMA_SERVICE_KEY만으로 동작하도록 수정되었습니다.
+
+4. /api/kma/status는 외부 기상청 호출을 직접 하지 않고 서버와 인증키 설정 여부만 확인합니다.
+   따라서 Render Health Check가 기상청 일시 장애 때문에 실패하지 않습니다.
+
+5. AWS 일자료는 기상청 API허브의 sfc_aws_day.php를 사용하며 rn_day(일강수량)를 조회합니다.
+   대표 지점: 금남 AWS 933, 사천 AWS 917.
