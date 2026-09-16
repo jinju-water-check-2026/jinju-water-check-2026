@@ -1,0 +1,486 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>2026년 진주지사 관내 3종 수중기초점검(정기안전점검)</title>
+<style>
+:root{
+  --navy:#123b63; --blue:#1e5d93; --sky:#eaf4fb; --green:#198754;
+  --orange:#ef8a17; --red:#d93025; --ink:#1d2733; --muted:#687585;
+  --line:#d9e1e8; --bg:#f5f7fa; --white:#fff;
+}
+*{box-sizing:border-box}
+body{margin:0;font-family:"Noto Sans KR","Malgun Gothic",Arial,sans-serif;background:var(--bg);color:var(--ink)}
+header{background:linear-gradient(135deg,#0f3558,#1e5d93);color:#fff;padding:22px 24px}
+.header-inner{max-width:1280px;margin:auto;display:flex;align-items:center;justify-content:space-between;gap:20px}
+h1{font-size:25px;margin:0 0 5px;font-weight:800}
+.subtitle{opacity:.9;font-size:14px}
+.badge{border:1px solid rgba(255,255,255,.35);padding:8px 12px;border-radius:999px;font-size:12px}
+main{max-width:1280px;margin:22px auto;padding:0 18px}
+.tabs{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:18px}
+.tab{border:1px solid var(--line);background:#fff;padding:10px 15px;border-radius:9px;cursor:pointer;font-weight:700;color:#465362}
+.tab.active{background:var(--navy);color:#fff;border-color:var(--navy)}
+.panel{display:none}.panel.active{display:block}
+.grid{display:grid;grid-template-columns:repeat(4,1fr);gap:14px}
+.card{background:#fff;border:1px solid var(--line);border-radius:13px;padding:17px;box-shadow:0 2px 8px rgba(20,40,60,.04)}
+.card h3{margin:0 0 10px;font-size:16px}.metric{font-size:29px;font-weight:800;color:var(--navy)}
+.small{font-size:12px;color:var(--muted);line-height:1.55}
+.section-title{margin:24px 0 12px;font-size:19px}
+.toolbar{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px}
+button,.btn{border:0;background:var(--navy);color:#fff;padding:10px 13px;border-radius:8px;cursor:pointer;font-weight:700}
+button.secondary{background:#eef3f7;color:#29445e;border:1px solid var(--line)}
+button.green{background:var(--green)} button.orange{background:var(--orange)}
+input,select{padding:10px;border:1px solid #cfd8e1;border-radius:8px;background:#fff}
+.table-wrap{overflow:auto;background:#fff;border:1px solid var(--line);border-radius:12px}
+table{border-collapse:collapse;width:100%;min-width:860px}
+th,td{border-bottom:1px solid var(--line);padding:10px 11px;text-align:left;font-size:13px}
+th{background:#f0f4f7;color:#314457;position:sticky;top:0}
+tr:hover td{background:#fafcff}
+.status{display:inline-block;padding:4px 8px;border-radius:999px;font-size:11px;font-weight:800}
+.status.dry{background:#fff0df;color:#9a5400}.status.always{background:#e5f5eb;color:#12663b}
+.calendar-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:12px}
+.calendar{display:grid;grid-template-columns:repeat(7,1fr);background:#fff;border:1px solid var(--line);border-radius:12px;overflow:hidden}
+.dayname{background:#eef3f7;padding:10px;text-align:center;font-weight:800;font-size:12px}
+.day{min-height:118px;border-right:1px solid var(--line);border-top:1px solid var(--line);padding:7px;font-size:11px}
+.day:nth-child(7n){border-right:0}.day.muted{background:#fafbfc;color:#b1bac4}.date{font-weight:800;margin-bottom:5px}
+.event{font-size:10px;padding:2px 0;margin:2px 0;line-height:1.35;white-space:normal;background:transparent;border:0}
+.event.prev{color:#5f6872;font-weight:700}
+.event.pred{color:#b51f1a;font-weight:800}
+.event.always{color:#14653c;font-weight:700}
+.event-pair{display:flex;gap:8px;justify-content:space-between;align-items:center;white-space:nowrap}
+.event-pair span{display:inline-block;min-width:0}
+.bridge-name-3{letter-spacing:.28em;margin-right:-.28em}
+.legend{display:flex;gap:15px;flex-wrap:wrap;font-size:12px;color:#526170;margin:9px 0 14px}
+.dot{display:inline-block;width:11px;height:11px;border-radius:3px;margin-right:5px;vertical-align:-1px}
+.dot.red{background:var(--red)}.dot.black{background:#1c2733}.dot.green{background:var(--green)}
+.notice{padding:12px 14px;background:#fff8e9;border:1px solid #f0d18b;border-radius:10px;color:#6f5015;line-height:1.6;font-size:13px}
+.formgrid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
+footer{max-width:1280px;margin:25px auto 45px;padding:0 18px;color:#74808d;font-size:11px}
+@media(max-width:900px){.grid{grid-template-columns:repeat(2,1fr)}.formgrid{grid-template-columns:1fr 1fr}}
+@media(max-width:600px){h1{font-size:20px}.grid,.formgrid{grid-template-columns:1fr}.day{min-height:95px;padding:5px}.event{font-size:9px}}
+@media print{header,.tabs,.toolbar,footer,.no-print{display:none!important}.panel{display:block!important}.card,.table-wrap,.calendar{box-shadow:none}}
+
+.api-status{display:inline-block;padding:4px 8px;border-radius:999px;font-size:11px;font-weight:800;background:#eef3f7;color:#526170}.api-status.ok{background:#e5f5eb;color:#12663b}.api-status.err{background:#ffe3e0;color:#a5241b}
+.codebox{background:#101820;color:#d8e7f5;border-radius:9px;padding:10px;font:12px/1.5 Consolas,monospace;overflow:auto}
+.forecast-table{min-width:760px}
+
+.card.clickable{cursor:pointer;transition:transform .15s,box-shadow .15s,border-color .15s}
+.card.clickable:hover{transform:translateY(-2px);box-shadow:0 5px 16px rgba(20,40,60,.10);border-color:#9bb8d0}
+.summary-date.prev{color:#1d2733;font-weight:800}.summary-date.pred{color:var(--red);font-weight:800}
+.auto-status{display:inline-flex;align-items:center;gap:6px;padding:6px 10px;border-radius:999px;background:#e5f5eb;color:#12663b;font-size:12px;font-weight:800}
+.bridge-table th:nth-child(1){width:70px}.bridge-table th:nth-child(2){width:100px}.bridge-table th:nth-child(3){width:70px}
+.bridge-table th:nth-child(4){width:auto}.bridge-table th:nth-child(5){width:60px}.bridge-table th:nth-child(6){width:145px}
+.bridge-table td.address{white-space:nowrap;padding-left:7px;padding-right:7px}
+.bridge-table .status{font-size:13px;padding:6px 10px}
+.summary-table th,.summary-table td{padding:9px 8px;text-align:center;font-size:13px;vertical-align:middle;border:1px solid var(--line)}
+.summary-table{table-layout:fixed;min-width:760px}
+.summary-table th:nth-child(1){width:18%}.summary-table th:nth-child(2){width:17%}.summary-table th:nth-child(3){width:22%}.summary-table th:nth-child(4){width:22%}.summary-table th:nth-child(5){width:21%}
+.bridge-table{table-layout:fixed}
+.bridge-table th,.bridge-table td{text-align:center;vertical-align:middle;font-size:13px;padding:9px 7px;border:1px solid var(--line)}
+.bridge-table th:nth-child(1){width:12%}.bridge-table th:nth-child(2){width:28%}.bridge-table th:nth-child(3){width:35%}.bridge-table th:nth-child(4){width:10%}.bridge-table th:nth-child(5){width:15%}
+.bridge-table td.address{white-space:normal;word-break:keep-all}.bridge-table .bridge-name-3{letter-spacing:.38em;margin-right:-.38em}
+#rain table{table-layout:fixed;min-width:760px}
+#rain th,#rain td{text-align:center;vertical-align:middle;font-size:13px;padding:9px 7px;border:1px solid var(--line);line-height:1.45}
+#rain .card table th,#rain .card table td{font-size:13px;text-align:center;vertical-align:middle}
+#rain .table-wrap{border-radius:10px}
+#rain .table-wrap table th{font-weight:800;background:#f0f4f7}
+#rain .table-wrap table th:nth-child(1){width:16%}
+#rain .table-wrap table th:nth-child(2){width:18%}
+#rain .table-wrap table th:nth-child(3){width:14%}
+#rain .table-wrap table th:nth-child(4){width:15%}
+#rain .table-wrap table th:nth-child(5){width:15%}
+#rain .table-wrap table th:nth-child(6){width:12%}
+#rain .table-wrap table th:nth-child(7){width:12%}
+#rain .forecast-table{min-width:760px}
+#rain .forecast-table th:nth-child(1){width:14%}#rain .forecast-table th:nth-child(2){width:13%}#rain .forecast-table th:nth-child(3){width:13%}#rain .forecast-table th:nth-child(4){width:14%}#rain .forecast-table th:nth-child(5){width:16%}#rain .forecast-table th:nth-child(6){width:13%}#rain .forecast-table th:nth-child(7){width:17%}
+#rain .summary-date{font-size:13px}
+
+/* 적용 1·2 : 기준표/스마트 캘린더 확대 및 정렬 보정 */
+main{max-width:2000px;margin:22px auto;padding:0 30px}
+.header-inner,footer{max-width:2000px}
+.summary-table{min-width:0;width:100%;table-layout:fixed;border-collapse:collapse}
+.summary-table th,.summary-table td{padding:12px 10px;text-align:center;vertical-align:middle;font-size:22px;line-height:1.35;border:1px solid #c7d8e8;white-space:nowrap}
+.summary-table th{font-size:26px;font-weight:800;background:#edf5fc;color:#15283d}
+.summary-table th:nth-child(1){width:15%}.summary-table th:nth-child(2){width:14%}.summary-table th:nth-child(3){width:27%}.summary-table th:nth-child(4){width:27%}.summary-table th:nth-child(5){width:17%}
+.summary-date.prev{color:#1d2733;font-weight:800}.summary-date.pred{color:#f02018;font-weight:800}
+.summary-table td:last-child{color:#f02018;font-weight:800}
+.summary-table .bridge-name-3{letter-spacing:.38em;margin-right:-.38em}
+
+.bridge-table{min-width:0;width:100%;table-layout:fixed}
+.bridge-table th,.bridge-table td{font-size:17px;text-align:center;vertical-align:middle;padding:11px 8px;border:1px solid #c7d8e8}
+.bridge-table th{font-size:19px;font-weight:800;background:#edf5fc}
+.bridge-table td.address{white-space:normal;word-break:keep-all}.bridge-table .bridge-name-3{letter-spacing:.38em;margin-right:-.38em}
+
+#rain table{min-width:0;width:100%;table-layout:fixed}
+#rain th,#rain td{font-size:17px;text-align:center;vertical-align:middle;padding:11px 8px;border:1px solid #c7d8e8;line-height:1.45}
+#rain .table-wrap table th{font-size:19px;font-weight:800;background:#edf5fc}
+#rain .forecast-table th,#rain .forecast-table td{font-size:17px}
+
+/* 적용 2 : 스마트 캘린더 */
+.calendar{width:100%;min-width:0;border:1px solid #c7d8e8;border-radius:12px}
+.dayname{background:#edf5fc;padding:11px 8px;text-align:center;font-weight:800;font-size:16px;color:#173a5d;border:0}
+.day{min-height:165px;border-right:1px solid #c7d8e8;border-top:1px solid #c7d8e8;padding:10px;font-size:14px;background:#fff}
+.date{font-size:15px;font-weight:800;margin-bottom:8px;color:#173a5d}
+.event{font-size:14px;padding:2px 0;margin:3px 0;line-height:1.5;white-space:normal;background:transparent;border:0}
+.event.prev{color:#65707b;font-weight:700}.event.pred{color:#f02018;font-weight:800}
+.event-pair{display:flex;gap:24px;justify-content:flex-start;align-items:center;white-space:nowrap}
+.event-pair span{display:inline-block;min-width:0}
+.bridge-name-3{letter-spacing:.38em;margin-right:-.38em}
+.legend{font-size:14px;gap:18px;margin:10px 0 15px}
+.dot{width:13px;height:13px}
+
+</style>
+</head>
+<body>
+<header>
+ <div class="header-inner">
+  <div>
+   <h1>2026년 진주지사 관내 3종 수중기초점검(정기안전점검)</h1>
+   <div class="subtitle">갈수기 기반 스마트 점검일정 안내 · 도로안전부</div>
+  </div>
+  <div class="badge">시설물안전법 제21조 개정 대응</div>
+ </div>
+</header>
+
+<main>
+ <div class="tabs no-print">
+  <button class="tab active" data-tab="dashboard">종합현황</button>
+  <button class="tab" data-tab="bridges">대상교량</button>
+  <button class="tab" data-tab="calendar">스마트 캘린더</button>
+  <button class="tab" data-tab="rain">무강우 분석</button>
+  <button class="tab" data-tab="guide">점검기준</button>
+ </div>
+
+ <section id="dashboard" class="panel active">
+  <div class="grid">
+   <div class="card clickable" onclick="goTab('bridges');document.getElementById('zoneFilter').value='';renderBridges()"><h3>대상 구역</h3><div class="metric">8</div><div class="small">진주지사 관내</div></div>
+   <div class="card clickable" onclick="goTab('bridges')"><h3>점검 대상</h3><div class="metric">16</div><div class="small">3종 수중기초점검 대상</div></div>
+   <div class="card clickable" onclick="goTab('bridges');document.getElementById('typeFilter').value='갈수기';renderBridges()"><h3>갈수기 도보점검</h3><div class="metric">10</div><div class="small">5개 교량 × 부산/순천 방향 표기 포함</div></div>
+   <div class="card clickable" onclick="goTab('bridges');document.getElementById('typeFilter').value='상시';renderBridges()"><h3>상시 도보점검</h3><div class="metric">7</div><div class="small">탑리교·중촌교·진성교 계열</div></div>
+  </div>
+  <h2 class="section-title">핵심 기능</h2>
+  <div class="grid">
+   <div class="card clickable" onclick="goTab('rain')"><h3>① 무강우일수 산출</h3><div class="small">강수량 데이터를 날짜별로 분석하고 연속 무강우 기간을 계산합니다. 보고서 기준의 예시 임계치는 21일입니다.</div></div>
+   <div class="card clickable" onclick="goTab('calendar')"><h3>② 갈수기 도래 예측</h3><div class="small">전년도 도래일과 금년도 분석 결과를 비교해 교량별 예상 점검일을 표시합니다.</div></div>
+   <div class="card clickable" onclick="goTab('calendar')"><h3>③ 월별 스마트 캘린더</h3><div class="small">10~12월 및 다음 해 1~3월을 대상으로 전년도 도래일과 금년도 예상일을 색상으로 구분합니다.</div></div>
+   <div class="card clickable" onclick="goTab('guide')"><h3>④ 업무·준수 지원</h3><div class="small">수중기초점검 대상과 점검방법, 수심 기준을 한 화면에서 확인할 수 있도록 구성했습니다.</div></div>
+  </div>
+  <h2 class="section-title">2026년 갈수기 도래일</h2>
+  <div class="table-wrap"><table class="summary-table"><thead><tr><th>행정구역</th><th>교량</th><th>전년도</th><th>금년도</th><th>권장방식</th></tr></thead><tbody id="summaryRows"></tbody></table></div>
+ </section>
+
+ <section id="bridges" class="panel">
+  <h2 class="section-title">3종 수중기초점검 대상 현황</h2>
+  <div class="toolbar no-print">
+   <input id="bridgeSearch" placeholder="교량명·주소 검색">
+   <select id="zoneFilter"><option value="">전체 구역</option></select>
+   <select id="typeFilter"><option value="">전체</option><option value="갈수기">갈수기에만 도보점검</option><option value="상시">상시 도보점검</option></select>
+  </div>
+  <div class="table-wrap"><table class="bridge-table"><thead><tr><th>구역</th><th>교량명</th><th>주소</th><th>교각수</th><th>점검조건</th></tr></thead><tbody id="bridgeRows"></tbody></table></div>
+ </section>
+
+ <section id="calendar" class="panel">
+  <div class="calendar-head">
+   <div><h2 class="section-title" style="margin:0">스마트 점검 캘린더</h2><div class="small">전년도 도래일=연한 회색, 금년도 도래일=진한 빨강</div></div>
+   <div class="toolbar no-print" style="margin:0"><button class="secondary" onclick="changeMonth(-1)">‹</button><b id="monthTitle" style="padding:10px 4px"></b><button class="secondary" onclick="changeMonth(1)">›</button><button onclick="window.print()">인쇄</button></div>
+  </div>
+  <div class="legend"><span><i class="dot black"></i>전년도 도래일</span><span><i class="dot red"></i>금년도 도래일</span></div>
+  <div id="calendarBox" class="calendar"></div>
+ </section>
+
+ <section id="rain" class="panel">
+  <h2 class="section-title">실제 기상청 정보 자동 조회 · 무강우·갈수기 분석</h2>
+  <div class="notice">
+    <b>자동 조회 방식</b>입니다. 사용자가 인증키, 지점번호, 분석기간을 입력하거나 조회 버튼을 누를 필요가 없습니다.
+    앱이 운영 서버의 기상청 연계 API를 자동 호출하고, 과거 확정자료는 지역별 대표 AWS를 기준관측소로 사용하고, 오늘 실황·미래예보는 해당 관측지점 좌표의 대표격자로 조회하여
+    확정 일강수량·연속 무강우일수·갈수기 후보를 자동 분석하고, 오늘은 초단기실황, 미래는 단기예보로 구분해 표시합니다.
+  </div>
+  <div class="grid" style="margin-top:14px">
+   <div class="card"><h3>기상청 연동</h3><div class="metric" id="autoWeatherState">조회 중</div><div class="small" id="autoWeatherMessage">페이지를 열면 자동으로 최신 자료를 조회합니다.</div></div>
+   <div class="card"><h3>분석 대상지역</h3><div class="metric" id="autoStationCount">-</div><div class="small">금남면 · 진교면 · 곤양면 (실황·예보는 지역별 대표격자)</div></div>
+   <div class="card"><h3>자동 분석 기준</h3><div class="metric">21일</div><div class="small">일강수량 0.1mm 미만 연속 무강우 기준</div></div>
+   <div class="card"><h3>마지막 조회</h3><div class="metric" id="autoLastUpdate">-</div><div class="small">페이지를 열 때마다 자동 갱신</div></div>
+  </div>
+  <div class="card" style="margin-top:14px">
+   <h3>지역별 실제 기상정보 자동 조회</h3>
+   <div class="table-wrap"><table>
+    <thead><tr><th>행정구역</th><th>과거 기준관측소</th><th>어제 강수량</th><th>현재 연속 무강우</th><th>최대 연속 무강우</th><th>상태</th></tr></thead>
+    <tbody id="autoWeatherRows"><tr><td colspan="6">기상청 자료를 자동 조회하고 있습니다.</td></tr></tbody>
+   </table></div>
+  </div>
+  <div class="card" style="margin-top:14px">
+   <h3>자동 갈수기 예측 결과</h3>
+   <div class="small" id="autoPredictionMessage">실제 일강수량 조회가 완료되면 자동으로 산출됩니다.</div>
+   <div id="autoPredictionResult" style="margin-top:10px"></div>
+  </div>
+  <div class="card" style="margin-top:14px">
+   <h3>오늘 실황 자동 조회</h3>
+   <div class="small" id="liveObservationMessage">초단기실황을 이용해 현재에 가까운 강우 상태를 조회합니다. 오늘의 최종 일강수량과는 구분하여 표시합니다.</div>
+   <div id="liveObservationResult" style="margin-top:10px"><span class="small">실황 조회 대기 중...</span></div>
+  </div>
+  <div class="card" style="margin-top:14px">
+   <h3>단기예보 자동 조회</h3>
+   <div class="toolbar" style="margin-top:10px">
+    <select id="forecastArea"><option value="geumnam">하동군 금남면</option><option value="jingyo">하동군 진교면</option><option value="gonyang">사천시 곤양면</option></select>
+   </div>
+   <div id="forecastResult" class="small">지역을 선택하면 해당 지역 예보가 자동으로 조회됩니다.</div>
+  </div>
+ </section>
+
+<section id="guide" class="panel">
+  <h2 class="section-title">수중기초점검 관련 기준</h2>
+  <div class="grid">
+   <div class="card"><h3>갈수기 수심 1m 미만</h3><div class="small"><b>도보점검(非 잠수점검)</b><br>자체시행(필요시 용역)<br>진주지사 관내 대상 교량은 이 조건에 해당한다고 보고서에 명시되어 있습니다.</div></div>
+   <div class="card"><h3>갈수기 수심 1m 이상</h3><div class="small"><b>잠수점검·수중초음파 조사</b><br>용역시행<br>필요 시 감독원 확인 후 추가과업을 시행합니다.</div></div>
+   <div class="card"><h3>기초 세굴 상태평가</h3><div class="small">안전점검·진단 및 성능평가 시 기초 세굴 상태평가를 매회 반영하는 내용이 보고서에 제시되어 있습니다.</div></div>
+   <div class="card"><h3>공통 점검 시기</h3><div class="small">하상정비·준설, 인접 기초공사, 손상·열화 진전 예상, 염화물 상태평가기준 C 이하 부식 예상 등의 경우도 확인 대상으로 제시되어 있습니다.</div></div>
+  </div>
+  <h2 class="section-title">보고서 기준 출처 메모</h2>
+  <div class="card small">본 앱의 대상교량, 갈수기 개념, 21일 예시 임계치, 2026년 도래일, 점검방법 및 기준은 사용자가 제공한 「적기 수중기초점검 바이브코딩 앱 개발보고서」의 내용을 기반으로 구현했습니다. 실제 법령·지침의 최신 원문은 운영 배포 전에 별도 검증이 필요합니다.</div>
+ </section>
+</main>
+<footer>3종 수중기초점검 스마트 일정 안내 · 최종본 · 기상청 데이터는 페이지 진입 시 자동 조회·분석되며 사용자 화면에 인증키를 노출하지 않습니다.</footer>
+
+<script>
+const bridges=[
+ {zone:1,name:"진정천교",dir:"부산",addr:"경상남도 하동군 금남면 계천리 749-7",piers:1,type:"갈수기"},
+ {zone:1,name:"진정천교",dir:"순천",addr:"경상남도 하동군 금남면 계천리 749-7",piers:1,type:"갈수기"},
+ {zone:2,name:"관곡천교",dir:"부산",addr:"경상남도 하동군 진교면 관곡리 944-16",piers:3,type:"갈수기"},
+ {zone:2,name:"관곡천교",dir:"순천",addr:"경상남도 하동군 진교면 관곡리 944-16",piers:3,type:"갈수기"},
+ {zone:3,name:"맥사교",dir:"부산",addr:"경상남도 사천시 곤양면 서정리 1203",piers:1,type:"갈수기"},
+ {zone:3,name:"맥사교",dir:"순천",addr:"경상남도 사천시 곤양면 서정리 1203",piers:1,type:"갈수기"},
+ {zone:4,name:"환덕교",dir:"부산",addr:"경상남도 사천시 곤양면 환덕리 1154-4",piers:2,type:"갈수기"},
+ {zone:4,name:"환덕교",dir:"순천",addr:"경상남도 사천시 곤양면 환덕리 1154-4",piers:2,type:"갈수기"},
+ {zone:5,name:"동천교",dir:"부산",addr:"경상남도 사천시 곤양면 묵곡리 1145",piers:1,type:"갈수기"},
+ {zone:5,name:"동천교",dir:"순천",addr:"경상남도 사천시 곤양면 묵곡리 1145",piers:1,type:"갈수기"},
+ {zone:6,name:"탑리교",dir:"부산",addr:"경상남도 사천시 축동면 탑리 941-8",piers:"-",type:"상시"},
+ {zone:6,name:"탑리교",dir:"순천",addr:"경상남도 사천시 축동면 탑리 941-8",piers:"-",type:"상시"},
+ {zone:7,name:"중촌교",dir:"부산",addr:"경상남도 진주시 진성면 동산리 1268-14",piers:"-",type:"상시"},
+ {zone:7,name:"중촌교",dir:"순천",addr:"경상남도 진주시 진성면 동산리 1268-14",piers:"-",type:"상시"},
+ {zone:8,name:"진성교",dir:"부산",addr:"경상남도 진주시 진성면 동산리 1268-14",piers:1,type:"상시"},
+ {zone:8,name:"진성교",dir:"순천",addr:"경상남도 진주시 진성면 동산리 1268-14",piers:1,type:"상시"}
+];
+
+const dates={
+ "진정천교":{prev:["10-12","11-22","12-10"],pred:["10-09","11-17","12-09"],area:"하동군 금남면"},
+ "관곡천교":{prev:["10-12","11-22","12-10"],pred:["10-09","11-17","12-09"],area:"하동군 진교면"},
+ "맥사교":{prev:["10-12","11-22","12-10"],pred:["10-09","11-17","12-09"],area:"사천시 곤양면"},
+ "환덕교":{prev:["10-13","11-23","12-11"],pred:["10-10","11-18","12-10"],area:"사천시 곤양면"},
+ "동천교":{prev:["10-13","11-23","12-11"],pred:["10-10","11-18","12-10"],area:"사천시 곤양면"}
+};
+
+function goTab(id){
+  document.querySelectorAll(".tab").forEach(x=>x.classList.toggle("active",x.dataset.tab===id));
+  document.querySelectorAll(".panel").forEach(x=>x.classList.toggle("active",x.id===id));
+  window.scrollTo({top:0,behavior:"smooth"});
+}
+document.querySelectorAll(".tab").forEach(btn=>btn.addEventListener("click",()=>goTab(btn.dataset.tab)));
+
+function renderBridges(){
+  const q=document.getElementById("bridgeSearch").value.toLowerCase(), z=document.getElementById("zoneFilter").value, t=document.getElementById("typeFilter").value;
+  const filtered=bridges.filter(b=>
+    (!q || (b.name+b.addr).toLowerCase().includes(q)) && (!z||String(b.zone)===z) && (!t||b.type===t)
+  );
+  const groups=[];
+  filtered.forEach(b=>{
+    const key=b.zone+"|"+b.name+"|"+b.addr;
+    let g=groups.find(x=>x.key===key);
+    if(!g){g={key,items:[],zone:b.zone,name:b.name,addr:b.addr};groups.push(g);}
+    g.items.push(b);
+  });
+  const bridgePair = (name, items) => {
+    const byDir = d => items.find(x=>x.dir===d);
+    const 부산 = byDir("부산") || items[0];
+    const 순천 = byDir("순천") || items[1] || items[0];
+    const spaced = name.length===3 ? `<span class="bridge-name-3">${name}</span>` : name;
+    return `${spaced}(부산), ${spaced}(순천)`;
+  };
+  document.getElementById("bridgeRows").innerHTML=groups.map(g=>{
+    const b=g.items[0];
+    return `<tr>
+      <td>${g.zone}구역</td>
+      <td><b>${bridgePair(g.name,g.items)}</b></td>
+      <td class="address">${g.addr}</td>
+      <td>${b.piers}</td>
+      <td><span class="status ${b.type==='갈수기'?'dry':'always'}">${b.type==='갈수기'?'갈수기 도보점검':'상시 도보점검'}</span></td>
+    </tr>`;
+  }).join("");
+}
+function dateSpans(arr, cls){return arr.map(x=>`<span class="summary-date ${cls}">${x.replace(/-/g,"/")}</span>`).join(", ");}
+function bridgeDisplay(name, dir){
+  const spaced = name.length===3 ? `<span class="bridge-name-3">${name}</span>` : name;
+  return `${spaced}(${dir})`;
+}
+function renderSummary(){
+  const groups=[
+    {area:"하동군 금남면",names:["진정천교"]},
+    {area:"하동군 진교면",names:["관곡천교"]},
+    {area:"사천시 곤양면",names:["맥사교","환덕교","동천교"]}
+  ];
+  let html="";
+  groups.forEach(g=>{
+    g.names.forEach((n,i)=>{
+      const d=dates[n];
+      html+=`<tr>${i===0?`<td rowspan="${g.names.length}"><b>${g.area}</b></td>`:""}<td><b>${n.length===3?`<span class="bridge-name-3">${n}</span>`:n}</b></td><td>${dateSpans(d.prev,"prev")}</td><td>${dateSpans(d.pred,"pred")}</td><td>도보점검(갈수기)</td></tr>`;
+    });
+  });
+  document.getElementById("summaryRows").innerHTML=html;
+}
+function initFilters(){
+  const s=document.getElementById("zoneFilter");
+  [...new Set(bridges.map(b=>b.zone))].forEach(z=>s.insertAdjacentHTML("beforeend",`<option value="${z}">${z}구역</option>`));
+}
+let calDate=new Date(2026,9,1);
+function changeMonth(n){calDate.setMonth(calDate.getMonth()+n);renderCalendar();}
+function renderCalendar(){
+  const y=calDate.getFullYear(),m=calDate.getMonth();
+  document.getElementById("monthTitle").textContent=`${y}년 ${m+1}월`;
+  const box=document.getElementById("calendarBox"); box.innerHTML="";
+  ["일","월","화","수","목","금","토"].forEach(d=>box.insertAdjacentHTML("beforeend",`<div class="dayname">${d}</div>`));
+  const first=new Date(y,m,1).getDay(), last=new Date(y,m+1,0).getDate();
+  for(let i=0;i<first;i++) box.insertAdjacentHTML("beforeend",`<div class="day muted"></div>`);
+  const directions=["부산","순천"];
+  for(let day=1;day<=last;day++){
+    const mm=String(m+1).padStart(2,"0"),dd=String(day).padStart(2,"0"),key=`${mm}-${dd}`;
+    let html=`<div class="day"><div class="date">${day}</div>`;
+    for(const [name,d] of Object.entries(dates)){
+      const prev=d.prev.includes(key), pred=d.pred.includes(key);
+      if(prev){
+        html+=`<div class="event prev"><div class="event-pair"><span>${bridgeDisplay(name,directions[0])}</span><span>${bridgeDisplay(name,directions[1])}</span></div></div>`;
+      }
+      if(pred){
+        html+=`<div class="event pred"><div class="event-pair"><span>${bridgeDisplay(name,directions[0])}</span><span>${bridgeDisplay(name,directions[1])}</span></div></div>`;
+      }
+    }
+    html+="</div>"; box.insertAdjacentHTML("beforeend",html);
+  }
+}
+
+/* 기상청 인증키는 사용자 화면에 노출하지 않습니다.
+   운영 서버의 /api/kma/* 프록시가 인증·조회·관측지점 매핑을 담당합니다.
+   화면에서는 페이지 진입 즉시 자동 조회만 수행합니다. */
+const KMA_PROXY_BASE='/api/kma';
+const regionNames={geumnam:'하동군 금남면',jingyo:'하동군 진교면',gonyang:'사천시 곤양면'};
+
+function escapeHtml(v){return String(v??'').replace(/[&<>'"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[c]));}
+
+function setAutoState(state,msg){
+  const stateEl=document.getElementById('autoWeatherState'),msgEl=document.getElementById('autoWeatherMessage');
+  stateEl.textContent=state==='ok'?'정상 연동':state==='err'?'연동 확인 필요':'조회 중';
+  stateEl.style.color=state==='ok'?'var(--green)':state==='err'?'var(--red)':'var(--navy)';
+  msgEl.textContent=msg||'';
+}
+
+function renderAutoWeatherRows(results=[]){
+  const rows=document.getElementById('autoWeatherRows');
+  if(!results.length){
+    rows.innerHTML='<tr><td colspan="6">조회된 기상자료가 없습니다.</td></tr>';
+    document.getElementById('autoStationCount').textContent='0'; return;
+  }
+  document.getElementById('autoStationCount').textContent=results.filter(x=>x.station).length;
+  rows.innerHTML=results.map(x=>{
+    const max=x.max?.days?`${x.max.days}일 (${escapeHtml(x.max.start||'')}~${escapeHtml(x.max.end||'')})`:'없음';
+    const cur=x.currentRun?.days?`${x.currentRun.days}일째 (${escapeHtml(x.currentRun.start||'')}~${escapeHtml(x.currentRun.end||'')})`:'현재 연속구간 없음';
+    const latest=x.latestRainfall??x.recentRainfall??x.lastRainfall??'-';
+    const ok=x.status==='ok'||x.station;
+    return `<tr><td><b>${escapeHtml(x.region||'-')}</b></td><td>${escapeHtml(x.station||'기준관측소')}</td><td>${escapeHtml(String(latest))}</td><td><b>${cur}</b></td><td>${max}</td><td><span class="api-status ${ok?'ok':'err'}">${ok?'정상':'확인 필요'}</span></td></tr>`;
+  }).join('');
+}
+
+function addDaysISO(iso,n){const [y,m,d]=iso.split('-').map(Number);const dt=new Date(Date.UTC(y,m-1,d+n));return dt.toISOString().slice(0,10);}
+function renderAutoPrediction(results=[]){
+  const el=document.getElementById('autoPredictionResult');
+  if(!results.length){el.innerHTML='<span class="small">실제 자료가 없어 예측 결과를 표시할 수 없습니다.</span>';return;}
+  const rows=results.map(x=>{
+    const q=x.qualifying?.find(r=>Number(r.days)>=21); const candidate=q?.start?addDaysISO(q.start,20):(x.predictedDate||x.predictionDate||x.drySeasonStart||null);
+    return `<tr><td>${escapeHtml(x.region||'-')}</td><td>${escapeHtml(x.station||'-')}</td><td>${candidate?`<b>${escapeHtml(candidate)}</b>`:'산출 중'}</td><td>${x.max?.days?x.max.days+'일':'-'}</td><td>${x.qualifying?.filter(r=>Number(r.days)>=21).length||0}개</td></tr>`;
+  }).join('');
+  el.innerHTML=`<div class="table-wrap"><table><thead><tr><th>행정구역</th><th>관측지점</th><th>21일 도달일</th><th>최대 연속 무강우</th><th>21일 이상 구간</th></tr></thead><tbody>${rows}</tbody></table></div>`;
+}
+
+async function checkKmaConnection(){
+  setAutoState('loading','운영 서버를 통해 기상청 자료를 자동 조회하고 있습니다.');
+  try{
+    const r=await fetch(KMA_PROXY_BASE+'/status',{cache:'no-store'});
+    if(!r.ok)throw new Error('서버 응답 '+r.status);
+    const j=await r.json(); if(!j.ok)throw new Error(j.message||'기상청 연계 서버가 준비되지 않았습니다.');
+    const stationMap=j.stations||{};
+    document.getElementById('autoStationCount').textContent=Object.values(stationMap).filter(x=>x&&x.name).length;
+    setAutoState('ok','지역별 AWS 확정자료와 실황·예보 연계를 자동 확인합니다.');
+    await runRealRainAnalysis();
+    await loadLiveObservation();
+    await loadShortForecast(true);
+  }catch(e){
+    setAutoState('err','자동 기상청 조회를 사용할 수 없습니다. 운영 서버의 /api/kma 연계를 확인해 주세요.');
+    document.getElementById('autoWeatherRows').innerHTML=`<tr><td colspan="6" style="color:#a5241b"><b>자동 조회 실패</b><br>${escapeHtml(e.message)}</td></tr>`;
+    document.getElementById('autoPredictionResult').innerHTML='<span style="color:#a5241b">기상청 실제 자료가 연결되면 자동으로 결과가 표시됩니다.</span>';
+  }
+}
+
+async function runRealRainAnalysis(){
+  const el=document.getElementById('autoPredictionResult'),today=new Date();
+  // AWS 일자료는 전날(D-1)까지만 제공되므로 종료일을 자동으로 어제로 설정
+  const yesterday=new Date(today);
+  yesterday.setDate(yesterday.getDate()-1);
+  const end=yesterday.toISOString().slice(0,10),sd=new Date(yesterday);
+  sd.setFullYear(yesterday.getFullYear()-1);
+  const start=sd.toISOString().slice(0,10),threshold=0.1;
+  document.getElementById('autoPredictionMessage').textContent=`${start} ~ ${end} 실제 일강수량을 자동 분석 중입니다.`;
+  const r=await fetch(`${KMA_PROXY_BASE}/daily?start=${encodeURIComponent(start)}&end=${encodeURIComponent(end)}&threshold=${threshold}`,{cache:'no-store'});
+  const j=await r.json().catch(()=>({}));
+  if(!r.ok||!j.ok)throw new Error(j.message||('서버 응답 '+r.status));
+  const results=j.results||[];
+  renderAutoWeatherRows(results);renderAutoPrediction(results);
+  const total=results.reduce((n,x)=>n+(x.qualifying?.filter(r=>Number(r.days)>=21).length||0),0);
+  document.getElementById('autoPredictionMessage').textContent=`${j.start||start} ~ ${j.end||end} 실제 일강수량 분석 완료 · 21일 이상 연속 무강우 구간 ${total}개`;
+  document.getElementById('autoLastUpdate').textContent=new Date().toLocaleTimeString('ko-KR',{hour:'2-digit',minute:'2-digit'});
+  setAutoState('ok','어제까지 지역별 AWS 확정 일강수량 분석이 완료되었습니다. 아래에서 오늘 실황과 미래 예보를 확인할 수 있습니다.');
+}
+
+async function loadLiveObservation(){
+  const el=document.getElementById('liveObservationResult');
+  const msg=document.getElementById('liveObservationMessage');
+  el.innerHTML='<b>오늘 실황 자동 조회 중...</b>';
+  try{
+    const r=await fetch(`${KMA_PROXY_BASE}/live`,{cache:'no-store'});
+    const j=await r.json().catch(()=>({}));
+    const results=j.results||[];
+    if(!results.length) throw new Error(j.message||('서버 응답 '+r.status));
+    const rows=results.map(x=>{
+      if(x.status!=='ok') return `<tr><td><b>${escapeHtml(x.region||'-')}</b></td><td colspan="6" style="color:#a5241b">${escapeHtml(x.message||'초단기실황 조회 실패')}</td></tr>`;
+      const bd=x.baseDate||'', bt=x.baseTime||'';
+      const obsTime=bd&&bt?`${bd.slice(0,4)}-${bd.slice(4,6)}-${bd.slice(6,8)} ${bt.slice(0,2)}:${bt.slice(2,4)}`:'-';
+      const rain=(x.rain1h===null||x.rain1h===undefined||x.rain1h==='')?'-':`${escapeHtml(x.rain1h)} mm`;
+      const ptyMap={'0':'없음','1':'비','2':'비/눈','3':'눈','5':'빗방울','6':'빗방울/눈날림','7':'눈날림'};
+      return `<tr><td><b>${escapeHtml(x.region||'-')}</b></td><td>${escapeHtml(obsTime)}</td><td><b>${rain}</b></td><td>${escapeHtml(ptyMap[String(x.pty)]??x.pty??'-')}</td><td>${x.temp??'-'}℃</td><td>${x.humidity??'-'}%</td><td>${x.wind??'-'}m/s</td></tr>`;
+    }).join('');
+    el.innerHTML=`<div class="table-wrap"><table><thead><tr><th>행정구역</th><th>실황 시각</th><th>최근 1시간 강수량</th><th>강수형태</th><th>기온</th><th>습도</th><th>풍속</th></tr></thead><tbody>${rows}</tbody></table></div>`;
+    msg.textContent='초단기실황의 RN1(최근 1시간 강수량)을 표시합니다. 오늘 날짜는 하루가 끝나기 전까지 확정 무강우일수에 포함하지 않습니다.';
+  }catch(e){
+    el.innerHTML=`<span style="color:#a5241b"><b>오늘 실황 자동 연동 실패</b><br>${escapeHtml(e.message)}</span>`;
+    msg.textContent='단기예보 조회서비스 활용신청/승인 후 오늘 실황을 사용할 수 있습니다.';
+  }
+}
+
+async function loadShortForecast(silent=false){
+  const area=document.getElementById('forecastArea').value,el=document.getElementById('forecastResult');
+  if(!silent)el.innerHTML='<b>단기예보 자동 조회 중...</b>';
+  try{
+    const r=await fetch(`${KMA_PROXY_BASE}/forecast?region=${encodeURIComponent(area)}`,{cache:'no-store'});
+    const j=await r.json().catch(()=>({}));
+    if(!r.ok||!j.ok)throw new Error(j.message||('서버 응답 '+r.status));
+    const rows=(j.items||[]).slice(0,40).map(x=>`<tr><td>${escapeHtml(x.date)}</td><td>${escapeHtml(x.time)}</td><td>${x.pop??'-'}%</td><td>${escapeHtml(x.pty??'-')}</td><td>${escapeHtml(x.pcp??'-')}</td><td>${x.tmp??'-'}℃</td><td>${x.wsd??'-'}m/s</td></tr>`).join('');
+    el.innerHTML=`<div class="table-wrap"><table class="forecast-table"><thead><tr><th>예보일</th><th>시각</th><th>강수확률</th><th>강수형태</th><th>강수량</th><th>기온</th><th>풍속</th></tr></thead><tbody>${rows||'<tr><td colspan="7">예보자료가 없습니다.</td></tr>'}</tbody></table></div>`;
+  }catch(e){el.innerHTML=`<span style="color:#a5241b"><b>단기예보 자동 연동 실패</b><br>${escapeHtml(e.message)}</span>`;}
+}
+
+
+document.getElementById("bridgeSearch").addEventListener("input",renderBridges);
+document.getElementById("zoneFilter").addEventListener("change",renderBridges);
+document.getElementById("typeFilter").addEventListener("change",renderBridges);
+document.getElementById("forecastArea").addEventListener("change",()=>loadShortForecast(false));
+initFilters(); renderBridges(); renderSummary(); renderCalendar(); checkKmaConnection();
+</script>
+</body>
+</html>
