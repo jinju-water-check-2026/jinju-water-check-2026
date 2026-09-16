@@ -459,7 +459,7 @@ async function loadLiveObservation(){
     msg.textContent='초단기실황의 RN1(최근 1시간 강수량)을 표시합니다. 오늘 날짜는 하루가 끝나기 전까지 확정 무강우일수에 포함하지 않습니다.';
   }catch(e){
     el.innerHTML=`<span style="color:#a5241b"><b>오늘 실황 자동 연동 실패</b><br>${escapeHtml(e.message)}</span>`;
-    msg.textContent='단기예보 조회서비스 활용신청/승인 후 오늘 실황을 사용할 수 있습니다.';
+    msg.textContent='기상청 API허브 초단기실황 API 활용신청/승인 및 인증키 권한을 확인해 주세요.';
   }
 }
 

@@ -50,8 +50,8 @@ REGIONS = {
 AWS_DAILY_URL = 'https://apihub.kma.go.kr/api/typ01/url/sfc_aws_day.php'
 AWS_HOURLY_URL = 'https://apihub.kma.go.kr/api/typ01/url/awsh.php'
 
-FCST_URL = 'https://apis.data.go.kr/1360000/VilageFcstInfoService_2.0/getVilageFcst'
-NCST_URL = 'https://apis.data.go.kr/1360000/VilageFcstInfoService_2.0/getUltraSrtNcst'
+FCST_URL = 'https://apihub.kma.go.kr/api/typ02/openApi/VilageFcstInfoService_2.0/getVilageFcst'
+NCST_URL = 'https://apihub.kma.go.kr/api/typ02/openApi/VilageFcstInfoService_2.0/getUltraSrtNcst'
 
 
 def require_key():
@@ -59,8 +59,8 @@ def require_key():
         raise RuntimeError('기상청 API허브 인증키가 설정되지 않았습니다. Render 환경변수 KMA_SERVICE_KEY를 확인해 주세요.')
 
 def require_data_go_key():
-    if not DATA_GO_KEY:
-        raise RuntimeError('단기예보 기능에는 DATA_GO_KR_SERVICE_KEY가 필요합니다. 기상청 API허브 인증키만 사용하는 경우 일자료/실황 기능은 정상 동작합니다.')
+    # 과거 호환용 이름은 유지하지만 예보도 이제 KMA API Hub 인증키를 사용합니다.
+    require_key()
 
 
 def now_kst():
@@ -263,29 +263,49 @@ def dfs_xy(lat, lon):
 
 
 def latest_ncst_base(now=None):
-    return (now or now_kst()).strftime('%Y%m%d'), (now or now_kst()).strftime('%H00')
+    now = now or now_kst()
+    # 정시 관측은 해당 시각 자료가 실제 생성되지 않았을 수 있으므로
+    # 현재 시각과 직전 시각을 순서대로 시도할 수 있게 반환합니다.
+    return now.replace(minute=0, second=0, microsecond=0)
 
-
-def ultra_nowcast(region_key, snapshot=None, snapshot_tm=None):
-    """기상청 API허브 AWS 정시자료에서 최근 관측값을 조회합니다."""
+def ultra_nowcast(region_key):
+    """기상청 API Hub 동네예보 초단기실황(JSON)을 조회합니다."""
     require_key()
     info = REGIONS.get(region_key)
     if not info:
         raise RuntimeError('지원하지 않는 지역입니다.')
+    nx, ny = dfs_xy(info['lat'], info['lon'])
     now = now_kst()
-    tm_dt = now.replace(minute=0, second=0, microsecond=0) - timedelta(hours=1)
-    tm = tm_dt.strftime('%Y%m%d%H%M')
-    snapshot = snapshot if snapshot is not None else aws_hourly_snapshot(tm, [info['stn']])
-    vals = snapshot.get(info['stn'], {})
-    if not vals:
-        raise RuntimeError(f'{info["station_name"]}({info["stn"]})의 {tm} 정시자료가 없습니다.')
-    return {
-        'regionKey': region_key, 'region': info['name'], 'station': info['station_name'],
-        'baseDate': tm[:8], 'baseTime': tm[8:],
-        'rain1h': vals.get('RN_HR1'), 'rainDay': vals.get('RN_DAY'),
-        'temp': vals.get('TA'), 'humidity': vals.get('HM'), 'wind': vals.get('WS'),
-        'status': 'ok',
-    }
+    candidates = [latest_ncst_base(now), latest_ncst_base(now) - timedelta(hours=1)]
+    last_error = None
+    for tm_dt in candidates:
+        base_date = tm_dt.strftime('%Y%m%d')
+        base_time = tm_dt.strftime('%H00')
+        params = {
+            'pageNo': '1', 'numOfRows': '1000', 'dataType': 'JSON',
+            'base_date': base_date, 'base_time': base_time,
+            'nx': str(nx), 'ny': str(ny), 'authKey': normalize_key(KMA_APIHUB_KEY),
+        }
+        try:
+            r = requests.get(NCST_URL, params=params, timeout=20)
+            data = parse_kma_response(r, '기상청 API허브 초단기실황')
+            header = data.get('response', {}).get('header', {})
+            if str(header.get('resultCode')) not in ('00','0'):
+                raise RuntimeError(header.get('resultMsg') or '초단기실황 API 오류')
+            raw = data.get('response', {}).get('body', {}).get('items', {}).get('item', []) or []
+            vals = {str(x.get('category')): x.get('obsrValue') for x in raw}
+            if not vals:
+                raise RuntimeError(f'{base_date} {base_time} 초단기실황 자료가 없습니다.')
+            return {
+                'regionKey': region_key, 'region': info['name'], 'station': info['station_name'],
+                'baseDate': base_date, 'baseTime': base_time,
+                'rain1h': vals.get('RN1'), 'rainDay': None,
+                'temp': vals.get('T1H'), 'humidity': vals.get('REH'), 'wind': vals.get('WSD'),
+                'pty': vals.get('PTY'), 'status': 'ok', 'source': 'KMA API Hub 초단기실황',
+            }
+        except Exception as e:
+            last_error = e
+    raise RuntimeError(str(last_error) if last_error else '초단기실황 조회 실패')
 
 def latest_base_time(now=None):
     now = now or datetime.now()
@@ -300,21 +320,22 @@ def latest_base_time(now=None):
 
 
 def forecast(region_key):
-    require_data_go_key()
+    """기상청 API Hub 동네예보 단기예보(JSON)를 조회합니다."""
+    require_key()
     info = REGIONS.get(region_key)
     if not info:
         raise RuntimeError('지원하지 않는 지역입니다.')
     nx, ny = dfs_xy(info['lat'], info['lon'])
-    base_date, base_time = latest_base_time()
+    base_date, base_time = latest_base_time(now_kst())
     params = {
-        'serviceKey': normalize_key(DATA_GO_KEY), 'pageNo': '1', 'numOfRows': '1000',
-        'dataType': 'JSON', 'base_date': base_date, 'base_time': base_time,
-        'nx': str(nx), 'ny': str(ny),
+        'pageNo': '1', 'numOfRows': '1000', 'dataType': 'JSON',
+        'base_date': base_date, 'base_time': base_time,
+        'nx': str(nx), 'ny': str(ny), 'authKey': normalize_key(KMA_APIHUB_KEY),
     }
     r = requests.get(FCST_URL, params=params, timeout=20)
-    data = parse_kma_response(r, '단기예보 API')
+    data = parse_kma_response(r, '기상청 API허브 단기예보')
     header = data.get('response', {}).get('header', {})
-    if header.get('resultCode') not in ('00', '0'):
+    if str(header.get('resultCode')) not in ('00', '0'):
         raise RuntimeError(header.get('resultMsg', '단기예보 API 오류'))
     raw = data.get('response', {}).get('body', {}).get('items', {}).get('item', []) or []
     grouped = {}
@@ -329,6 +350,8 @@ def forecast(region_key):
             'pop': v.get('POP'), 'pty': v.get('PTY'), 'pcp': v.get('PCP'),
             'tmp': v.get('TMP'), 'wsd': v.get('WSD')
         })
+    if not out:
+        raise RuntimeError(f'{base_date} {base_time} 단기예보 자료가 없습니다.')
     return out, nx, ny, base_date, base_time
 
 
@@ -395,32 +418,21 @@ def daily():
 
 @app.route('/api/kma/live')
 def live():
-    """세 대상 행정구역의 오늘 초단기실황을 반환합니다.
-    주의: RN1은 최근 1시간 강수량이므로 '오늘 최종 일강수량'과는 다릅니다.
-    """
+    """세 대상 행정구역의 오늘 초단기실황을 KMA API Hub로 자동 조회합니다."""
     try:
         require_key()
         requested = request.args.get('region')
         keys = [requested] if requested else list(REGIONS.keys())
         results = []
-        selected = [k for k in keys if k in REGIONS]
-        unique_stns = sorted({REGIONS[k]['stn'] for k in selected})
-        now = now_kst()
-        tm_dt = now.replace(minute=0, second=0, microsecond=0) - timedelta(hours=1)
-        tm = tm_dt.strftime('%Y%m%d%H%M')
-        try:
-            snapshot = aws_hourly_snapshot(tm, unique_stns)
-            for key in selected:
-                try:
-                    results.append(ultra_nowcast(key, snapshot=snapshot, snapshot_tm=tm))
-                except Exception as e:
-                    results.append({'regionKey': key, 'region': REGIONS[key]['name'], 'status': 'error', 'message': str(e)})
-        except Exception as e:
-            for key in selected:
-                results.append({'regionKey': key, 'region': REGIONS[key]['name'], 'status': 'error', 'message': str(e)})
+        for key in keys:
+            if key not in REGIONS:
+                continue
+            try:
+                results.append(ultra_nowcast(key))
+            except Exception as e:
+                results.append({'regionKey': key, 'region': REGIONS[key]['name'], 'station': REGIONS[key]['station_name'], 'status': 'error', 'message': str(e)})
         any_ok = any(x.get('status') == 'ok' for x in results)
-        return jsonify(ok=any_ok, results=results,
-                       note='초단기실황 RN1은 최근 1시간 강수량이며 당일 확정 일강수량이 아닙니다.')
+        return jsonify(ok=any_ok, results=results, note='기상청 API Hub 초단기실황 RN1(최근 1시간 강수량)을 표시합니다.')
     except Exception as e:
         print('[KMA LIVE ERROR]', repr(e), flush=True)
         return jsonify(ok=False, message=str(e), results=[]), 500
