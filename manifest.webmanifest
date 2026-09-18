@@ -1,0 +1,15 @@
+{
+  "name": "2026년 진주지사 관내 3종 수중기초점검(정기안전점검)",
+  "short_name": "진주지사 수중기초점검",
+  "description": "진주지사 3종 수중기초점검·갈수기·기상정보 스마트 점검 앱",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#f5f7fa",
+  "theme_color": "#123b63",
+  "lang": "ko-KR",
+  "icons": [
+    {"src":"/icons/icon-192.png","sizes":"192x192","type":"image/png","purpose":"any maskable"},
+    {"src":"/icons/icon-512.png","sizes":"512x512","type":"image/png","purpose":"any maskable"}
+  ]
+}
