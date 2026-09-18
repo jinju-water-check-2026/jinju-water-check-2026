@@ -116,12 +116,19 @@ main{max-width:2000px;margin:22px auto;padding:0 30px}
 .summary-date.prev{color:#1d2733;font-weight:800}.summary-date.pred{color:#f02018;font-weight:800}
 .summary-table td:last-child{color:#f02018;font-weight:800}
 .summary-table .bridge-name-3{letter-spacing:.38em;margin-right:-.38em}
+/* 갈수기 도래일 글자크기: 대상 구역 카드 제목(.card h3)과 동일하게 통일 */
+.dryseason-title{font-size:16px;}
+.summary-table th,.summary-table td{font-size:16px;}
+.summary-table .summary-area,.summary-table .summary-detail,.summary-table td:nth-child(2),.summary-table .summary-date,.summary-table td:last-child{font-size:16px;}
 /* 최종 글자크기 보정: 교량명 22px, 날짜/점검방법 21px */
 .summary-table .summary-area{font-size:22px;font-weight:800}
 .summary-table .summary-detail{font-size:20px}
 .summary-table td:nth-child(2){font-size:20px;font-weight:800}
 .summary-table .summary-date{font-size:20px}
 .summary-table td:last-child{font-size:20px;color:#f02018;font-weight:800}
+/* 위 표의 모든 글자크기는 대상 구역 제목과 동일한 16px로 통일 */
+.summary-table th,.summary-table td,.summary-table .summary-area,.summary-table .summary-detail,.summary-table td:nth-child(2),.summary-table .summary-date,.summary-table td:last-child{font-size:16px;}
+
 
 .bridge-table{min-width:0;width:100%;table-layout:fixed}
 .bridge-table th,.bridge-table td{font-size:17px;text-align:center;vertical-align:middle;padding:11px 8px;border:1px solid #c7d8e8}
@@ -172,6 +179,8 @@ main{max-width:2000px;margin:22px auto;padding:0 30px}
   .card h3{font-size:15px;}
   .metric{font-size:27px;}
   .section-title{font-size:18px;margin:18px 0 9px;}
+  .dryseason-title{font-size:15px;}
+
   .table-wrap{overflow-x:auto;-webkit-overflow-scrolling:touch;}
   /* 모바일 갈수기 도래일 표: 열 폭을 확보해 교량명과 날짜가 겹치지 않도록 정렬 */
   .summary-table{min-width:900px !important; table-layout:fixed;}
@@ -187,6 +196,9 @@ main{max-width:2000px;margin:22px auto;padding:0 30px}
   .summary-table td:nth-child(2){font-size:13px;}
   .summary-table .summary-date{font-size:13px;}
   .summary-table td:last-child{font-size:13px;}
+  /* 모바일도 대상 구역 제목(.card h3)과 동일한 15px로 통일 */
+  .summary-table th,.summary-table td,.summary-table .summary-area,.summary-table .summary-detail,.summary-table td:nth-child(2),.summary-table .summary-date,.summary-table td:last-child{font-size:15px;}
+
   .summary-table .summary-bridge-label{min-width:0;width:100%;display:inline-flex;white-space:nowrap;}
   .summary-table .summary-bridge-label .bridge-name-3{letter-spacing:.25em;margin-right:-.25em;}
   .bridge-table{min-width:900px !important;}
@@ -235,7 +247,7 @@ main{max-width:2000px;margin:22px auto;padding:0 30px}
    <div class="card clickable" onclick="goTab('calendar')"><h3>③ 월별 스마트 캘린더</h3><div class="small">10~12월 및 다음 해 1~3월을 대상으로 전년도 도래일과 금년도 예상일을 색상으로 구분합니다.</div></div>
    <div class="card clickable" onclick="goTab('guide')"><h3>④ 업무·준수 지원</h3><div class="small">수중기초점검 대상과 점검방법, 수심 기준을 한 화면에서 확인할 수 있도록 구성했습니다.</div></div>
   </div>
-  <h2 class="section-title">2026년 갈수기 도래일</h2>
+  <h2 class="section-title dryseason-title">2026년 갈수기 도래일</h2>
   <div class="table-wrap"><table class="summary-table"><thead><tr><th>행정구역</th><th>교량</th><th>전년도</th><th>금년도</th><th>점검방법</th></tr></thead><tbody id="summaryRows"></tbody></table></div>
  </section>
 
