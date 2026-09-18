@@ -86,6 +86,10 @@ footer{max-width:1280px;margin:25px auto 45px;padding:0 18px;color:#74808d;font-
 .bridge-table th,.bridge-table td{text-align:center;vertical-align:middle;font-size:13px;padding:9px 7px;border:1px solid var(--line)}
 .bridge-table th:nth-child(1){width:12%}.bridge-table th:nth-child(2){width:28%}.bridge-table th:nth-child(3){width:35%}.bridge-table th:nth-child(4){width:10%}.bridge-table th:nth-child(5){width:15%}
 .bridge-table td.address{white-space:normal;word-break:keep-all}.bridge-table .bridge-name-3{letter-spacing:.38em;margin-right:-.38em}
+/* 8구역 진성교 3개소: 교량명 한 셀 안에서 3개 항목을 가로로 균등 배치 */
+.bridge-triple{display:flex;align-items:center;justify-content:center;gap:8px;width:100%;white-space:nowrap}
+.bridge-triple-item{flex:1 1 0;min-width:0;text-align:center;white-space:nowrap}
+.bridge-triple-item .bridge-name-3{letter-spacing:.28em;margin-right:-.28em}
 #rain table{table-layout:fixed;min-width:760px}
 #rain th,#rain td{text-align:center;vertical-align:middle;font-size:13px;padding:9px 7px;border:1px solid var(--line);line-height:1.45}
 #rain .card table th,#rain .card table td{font-size:13px;text-align:center;vertical-align:middle}
@@ -113,9 +117,11 @@ main{max-width:2000px;margin:22px auto;padding:0 30px}
 .summary-table td:last-child{color:#f02018;font-weight:800}
 .summary-table .bridge-name-3{letter-spacing:.38em;margin-right:-.38em}
 /* 최종 글자크기 보정: 교량명 22px, 날짜/점검방법 21px */
-.summary-table td:nth-child(2){font-size:22px;font-weight:800}
-.summary-table .summary-date{font-size:21px}
-.summary-table td:last-child{font-size:21px;color:#f02018;font-weight:800}
+.summary-table .summary-area{font-size:22px;font-weight:800}
+.summary-table .summary-detail{font-size:20px}
+.summary-table td:nth-child(2){font-size:20px;font-weight:800}
+.summary-table .summary-date{font-size:20px}
+.summary-table td:last-child{font-size:20px;color:#f02018;font-weight:800}
 
 .bridge-table{min-width:0;width:100%;table-layout:fixed}
 .bridge-table th,.bridge-table td{font-size:17px;text-align:center;vertical-align:middle;padding:11px 8px;border:1px solid #c7d8e8}
@@ -141,6 +147,10 @@ main{max-width:2000px;margin:22px auto;padding:0 30px}
 .dot{width:13px;height:13px}
 
 
+/* 8구역 진성교: 한 셀 안에서 콤마로만 구분, 기존 교량명 배치는 유지 */
+.bridge-table .bridge-triple{display:inline;white-space:nowrap;}
+.bridge-table .bridge-triple-item{display:inline;flex:none;}
+
 /* 최종 교량명 정렬 + 모바일 PWA 보정 */
 .summary-table .summary-bridge-label{
   display:inline-flex; align-items:center; justify-content:center;
@@ -163,14 +173,26 @@ main{max-width:2000px;margin:22px auto;padding:0 30px}
   .metric{font-size:27px;}
   .section-title{font-size:18px;margin:18px 0 9px;}
   .table-wrap{overflow-x:auto;-webkit-overflow-scrolling:touch;}
-  .summary-table{min-width:900px !important;}
-  .summary-table th,.summary-table td{font-size:18px;padding:9px 8px;}
-  .summary-table th{font-size:20px;}
-  .summary-table td:nth-child(2){font-size:20px;}
-  .summary-table .summary-date,.summary-table td:last-child{font-size:19px;}
-  .summary-table .summary-bridge-label{min-width:230px;}
+  /* 모바일 갈수기 도래일 표: 열 폭을 확보해 교량명과 날짜가 겹치지 않도록 정렬 */
+  .summary-table{min-width:900px !important; table-layout:fixed;}
+  .summary-table th,.summary-table td{font-size:15px;padding:10px 7px;line-height:1.35;white-space:nowrap;}
+  .summary-table th{font-size:16px;}
+  .summary-table th:nth-child(1){width:16% !important;}
+  .summary-table th:nth-child(2){width:27% !important;}
+  .summary-table th:nth-child(3){width:21% !important;}
+  .summary-table th:nth-child(4){width:21% !important;}
+  .summary-table th:nth-child(5){width:15% !important;}
+  .summary-table .summary-area{font-size:15px;}
+  .summary-table .summary-detail{font-size:13px;}
+  .summary-table td:nth-child(2){font-size:13px;}
+  .summary-table .summary-date{font-size:13px;}
+  .summary-table td:last-child{font-size:13px;}
+  .summary-table .summary-bridge-label{min-width:0;width:100%;display:inline-flex;white-space:nowrap;}
+  .summary-table .summary-bridge-label .bridge-name-3{letter-spacing:.25em;margin-right:-.25em;}
   .bridge-table{min-width:900px !important;}
   .bridge-table th,.bridge-table td{font-size:15px;padding:9px 7px;}
+  .bridge-triple{gap:4px}
+  .bridge-triple-item{font-size:14px}
   .calendar{min-width:980px;}
   .calendar-head{display:block;}
   .calendar-head .toolbar{margin-top:8px !important;}
@@ -337,7 +359,9 @@ function renderBridges(){
   });
   document.getElementById("bridgeRows").innerHTML=groups.map(g=>{
     const nameSpaced = g.name.length===3 ? `<span class="bridge-name-3">${g.name}</span>` : g.name;
-    const bridgeNames = g.items.map(b=>`${nameSpaced}(${b.dir})`).join(", ");
+    const bridgeNames = g.zone===8 && g.name==='진성교'
+      ? g.items.map(b=>`${nameSpaced}(${b.dir})`).join(", ")
+      : g.items.map(b=>`${nameSpaced}(${b.dir})`).join(", ");
     const b=g.items[0];
     return `<tr>
       <td>${g.zone}구역</td>
@@ -364,7 +388,7 @@ function renderSummary(){
     g.names.forEach((n,i)=>{
       const d=dates[n];
       const summaryName = n.length===3 ? `<span class="bridge-name-3">${n}</span>` : n;
-      html+=`<tr>${i===0?`<td rowspan="${g.names.length}"><b>${g.area}</b></td>`:""}<td><b><span class="summary-bridge-label">${summaryName}(부산, 순천)</span></b></td><td>${dateSpans(d.prev,"prev")}</td><td>${dateSpans(d.pred,"pred")}</td><td>도보점검(갈수기)</td></tr>`;
+      html+=`<tr>${i===0?`<td class="summary-area" rowspan="${g.names.length}"><b>${g.area}</b></td>`:""}<td class="summary-detail"><b><span class="summary-bridge-label">${summaryName}(부산, 순천)</span></b></td><td class="summary-detail">${dateSpans(d.prev,"prev")}</td><td class="summary-detail">${dateSpans(d.pred,"pred")}</td><td class="summary-detail">도보점검(갈수기)</td></tr>`;
     });
   });
   document.getElementById("summaryRows").innerHTML=html;
