@@ -3,6 +3,12 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="theme-color" content="#123b63">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="진주지사 수중기초점검">
+<link rel="manifest" href="/manifest.webmanifest">
 <title>2026년 진주지사 관내 3종 수중기초점검(정기안전점검)</title>
 <style>
 :root{
@@ -106,6 +112,10 @@ main{max-width:2000px;margin:22px auto;padding:0 30px}
 .summary-date.prev{color:#1d2733;font-weight:800}.summary-date.pred{color:#f02018;font-weight:800}
 .summary-table td:last-child{color:#f02018;font-weight:800}
 .summary-table .bridge-name-3{letter-spacing:.38em;margin-right:-.38em}
+/* 최종 글자크기 보정: 교량명 22px, 날짜/점검방법 21px */
+.summary-table td:nth-child(2){font-size:22px;font-weight:800}
+.summary-table .summary-date{font-size:21px}
+.summary-table td:last-child{font-size:21px;color:#f02018;font-weight:800}
 
 .bridge-table{min-width:0;width:100%;table-layout:fixed}
 .bridge-table th,.bridge-table td{font-size:17px;text-align:center;vertical-align:middle;padding:11px 8px;border:1px solid #c7d8e8}
@@ -129,6 +139,43 @@ main{max-width:2000px;margin:22px auto;padding:0 30px}
 .bridge-name-3{letter-spacing:.38em;margin-right:-.38em}
 .legend{font-size:14px;gap:18px;margin:10px 0 15px}
 .dot{width:13px;height:13px}
+
+
+/* 최종 교량명 정렬 + 모바일 PWA 보정 */
+.summary-table .summary-bridge-label{
+  display:inline-flex; align-items:center; justify-content:center;
+  min-width:230px; white-space:nowrap;
+}
+.summary-table .summary-bridge-label .bridge-name-3{display:inline-block; letter-spacing:.38em; margin-right:-.38em;}
+@media(max-width:600px){
+  body{min-width:0;}
+  header{padding:15px 14px;}
+  .header-inner{display:block;}
+  h1{font-size:18px;line-height:1.35;}
+  .subtitle{font-size:12px;}
+  .badge{display:inline-block;margin-top:8px;font-size:11px;padding:6px 9px;}
+  main{margin:12px auto;padding:0 10px;}
+  .tabs{flex-wrap:nowrap;overflow-x:auto;padding-bottom:4px;margin-bottom:12px;-webkit-overflow-scrolling:touch;}
+  .tab{flex:0 0 auto;padding:9px 12px;font-size:13px;}
+  .grid{grid-template-columns:1fr;gap:10px;}
+  .card{padding:13px;border-radius:10px;}
+  .card h3{font-size:15px;}
+  .metric{font-size:27px;}
+  .section-title{font-size:18px;margin:18px 0 9px;}
+  .table-wrap{overflow-x:auto;-webkit-overflow-scrolling:touch;}
+  .summary-table{min-width:900px !important;}
+  .summary-table th,.summary-table td{font-size:18px;padding:9px 8px;}
+  .summary-table th{font-size:20px;}
+  .summary-table td:nth-child(2){font-size:20px;}
+  .summary-table .summary-date,.summary-table td:last-child{font-size:19px;}
+  .summary-table .summary-bridge-label{min-width:230px;}
+  .bridge-table{min-width:900px !important;}
+  .bridge-table th,.bridge-table td{font-size:15px;padding:9px 7px;}
+  .calendar{min-width:980px;}
+  .calendar-head{display:block;}
+  .calendar-head .toolbar{margin-top:8px !important;}
+  footer{padding:0 10px;}
+}
 
 </style>
 </head>
@@ -155,7 +202,7 @@ main{max-width:2000px;margin:22px auto;padding:0 30px}
  <section id="dashboard" class="panel active">
   <div class="grid">
    <div class="card clickable" onclick="goTab('bridges');document.getElementById('zoneFilter').value='';renderBridges()"><h3>대상 구역</h3><div class="metric">8</div><div class="small">진주지사 관내</div></div>
-   <div class="card clickable" onclick="goTab('bridges')"><h3>점검 대상</h3><div class="metric">16</div><div class="small">3종 수중기초점검 대상</div></div>
+   <div class="card clickable" onclick="goTab('bridges')"><h3>점검 대상</h3><div class="metric">17</div><div class="small">3종 수중기초점검 대상</div></div>
    <div class="card clickable" onclick="goTab('bridges');document.getElementById('typeFilter').value='갈수기';renderBridges()"><h3>갈수기 도보점검</h3><div class="metric">10</div><div class="small">5개 교량 × 부산/순천 방향 표기 포함</div></div>
    <div class="card clickable" onclick="goTab('bridges');document.getElementById('typeFilter').value='상시';renderBridges()"><h3>상시 도보점검</h3><div class="metric">7</div><div class="small">탑리교·중촌교·진성교 계열</div></div>
   </div>
@@ -167,7 +214,7 @@ main{max-width:2000px;margin:22px auto;padding:0 30px}
    <div class="card clickable" onclick="goTab('guide')"><h3>④ 업무·준수 지원</h3><div class="small">수중기초점검 대상과 점검방법, 수심 기준을 한 화면에서 확인할 수 있도록 구성했습니다.</div></div>
   </div>
   <h2 class="section-title">2026년 갈수기 도래일</h2>
-  <div class="table-wrap"><table class="summary-table"><thead><tr><th>행정구역</th><th>교량</th><th>전년도</th><th>금년도</th><th>권장방식</th></tr></thead><tbody id="summaryRows"></tbody></table></div>
+  <div class="table-wrap"><table class="summary-table"><thead><tr><th>행정구역</th><th>교량</th><th>전년도</th><th>금년도</th><th>점검방법</th></tr></thead><tbody id="summaryRows"></tbody></table></div>
  </section>
 
  <section id="bridges" class="panel">
@@ -258,8 +305,9 @@ const bridges=[
  {zone:6,name:"탑리교",dir:"순천",addr:"경상남도 사천시 축동면 탑리 941-8",piers:"-",type:"상시"},
  {zone:7,name:"중촌교",dir:"부산",addr:"경상남도 진주시 진성면 동산리 1268-14",piers:"-",type:"상시"},
  {zone:7,name:"중촌교",dir:"순천",addr:"경상남도 진주시 진성면 동산리 1268-14",piers:"-",type:"상시"},
- {zone:8,name:"진성교",dir:"부산",addr:"경상남도 진주시 진성면 동산리 1268-14",piers:1,type:"상시"},
- {zone:8,name:"진성교",dir:"순천",addr:"경상남도 진주시 진성면 동산리 1268-14",piers:1,type:"상시"}
+ {zone:8,name:"진성교",dir:"0",addr:"경상남도 진주시 진성면 동산리 1268-14",piers:1,type:"상시"},
+ {zone:8,name:"진성교",dir:"진입",addr:"경상남도 진주시 진성면 동산리 1268-14",piers:1,type:"상시"},
+ {zone:8,name:"진성교",dir:"진출",addr:"경상남도 진주시 진성면 동산리 1268-14",piers:1,type:"상시"}
 ];
 
 const dates={
@@ -279,9 +327,7 @@ document.querySelectorAll(".tab").forEach(btn=>btn.addEventListener("click",()=>
 
 function renderBridges(){
   const q=document.getElementById("bridgeSearch").value.toLowerCase(), z=document.getElementById("zoneFilter").value, t=document.getElementById("typeFilter").value;
-  const filtered=bridges.filter(b=>
-    (!q || (b.name+b.addr).toLowerCase().includes(q)) && (!z||String(b.zone)===z) && (!t||b.type===t)
-  );
+  const filtered=bridges.filter(b=>(!q || (b.name+b.addr).toLowerCase().includes(q)) && (!z||String(b.zone)===z) && (!t||b.type===t));
   const groups=[];
   filtered.forEach(b=>{
     const key=b.zone+"|"+b.name+"|"+b.addr;
@@ -289,18 +335,13 @@ function renderBridges(){
     if(!g){g={key,items:[],zone:b.zone,name:b.name,addr:b.addr};groups.push(g);}
     g.items.push(b);
   });
-  const bridgePair = (name, items) => {
-    const byDir = d => items.find(x=>x.dir===d);
-    const 부산 = byDir("부산") || items[0];
-    const 순천 = byDir("순천") || items[1] || items[0];
-    const spaced = name.length===3 ? `<span class="bridge-name-3">${name}</span>` : name;
-    return `${spaced}(부산), ${spaced}(순천)`;
-  };
   document.getElementById("bridgeRows").innerHTML=groups.map(g=>{
+    const nameSpaced = g.name.length===3 ? `<span class="bridge-name-3">${g.name}</span>` : g.name;
+    const bridgeNames = g.items.map(b=>`${nameSpaced}(${b.dir})`).join(", ");
     const b=g.items[0];
     return `<tr>
       <td>${g.zone}구역</td>
-      <td><b>${bridgePair(g.name,g.items)}</b></td>
+      <td><b>${bridgeNames}</b></td>
       <td class="address">${g.addr}</td>
       <td>${b.piers}</td>
       <td><span class="status ${b.type==='갈수기'?'dry':'always'}">${b.type==='갈수기'?'갈수기 도보점검':'상시 도보점검'}</span></td>
@@ -322,7 +363,8 @@ function renderSummary(){
   groups.forEach(g=>{
     g.names.forEach((n,i)=>{
       const d=dates[n];
-      html+=`<tr>${i===0?`<td rowspan="${g.names.length}"><b>${g.area}</b></td>`:""}<td><b>${n.length===3?`<span class="bridge-name-3">${n}</span>`:n}</b></td><td>${dateSpans(d.prev,"prev")}</td><td>${dateSpans(d.pred,"pred")}</td><td>도보점검(갈수기)</td></tr>`;
+      const summaryName = n.length===3 ? `<span class="bridge-name-3">${n}</span>` : n;
+      html+=`<tr>${i===0?`<td rowspan="${g.names.length}"><b>${g.area}</b></td>`:""}<td><b><span class="summary-bridge-label">${summaryName}(부산, 순천)</span></b></td><td>${dateSpans(d.prev,"prev")}</td><td>${dateSpans(d.pred,"pred")}</td><td>도보점검(갈수기)</td></tr>`;
     });
   });
   document.getElementById("summaryRows").innerHTML=html;
@@ -481,6 +523,13 @@ document.getElementById("zoneFilter").addEventListener("change",renderBridges);
 document.getElementById("typeFilter").addEventListener("change",renderBridges);
 document.getElementById("forecastArea").addEventListener("change",()=>loadShortForecast(false));
 initFilters(); renderBridges(); renderSummary(); renderCalendar(); checkKmaConnection();
+
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('/service-worker.js').catch(() => {});
+  });
+}
+
 </script>
 </body>
 </html>
