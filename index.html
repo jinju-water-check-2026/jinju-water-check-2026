@@ -723,6 +723,9 @@ main{
   }
 }
 
+.qualifying-segment{display:inline-block;margin:2px 4px 2px 0;padding:4px 7px;border:1px solid #cbd5e1;border-radius:6px;background:#f8fafc;color:#26384a;font:inherit;font-size:13px;cursor:pointer;white-space:nowrap;}
+.qualifying-segment:hover,.qualifying-segment:focus{background:#eef4f8;border-color:#7b8da0;outline:none;}
+.qualifying-date-detail{margin-top:8px;padding:9px 12px;border-left:4px solid var(--navy);background:#f5f7fa;font-weight:700;color:#26384a;}
 </style>
 
 <style id="bridge-name-normal-weight">
@@ -911,7 +914,7 @@ main{
    <h3>자동 갈수기 예측 결과</h3>
    <div class="small" style="margin:6px 0 10px;color:#526170">2027~2030년 점검일은 2025·2026년의 21일 이상 연속 무강우 도래 패턴을 기준으로 추정한 일정입니다. 실제 기상관측값이 확보되면 자동 분석 결과로 갱신됩니다.</div>
    <div class="small" id="autoPredictionMessage">실제 일강수량 조회가 완료되면 자동으로 산출됩니다.</div>
-   <div class="small" style="margin-top:6px;color:#526170">점검일 선정: 일강수량 0.1mm 미만이 21일 이상 연속된 구간의 21일째 날짜를 대상교량 점검일로 반영합니다.</div>
+   <div class="small" style="margin-top:6px;color:#526170">점검일 선정: 일강수량 0.1mm 미만이 21일 이상 연속된 구간에서 다가오는 21일째 날짜를 대상교량 점검일로 반영합니다. 21일 이상 구간은 마우스를 올리면 기간이 표시되고 클릭하면 해당 날짜가 아래에 나타납니다.</div>
    <div id="autoPredictionResult" style="margin-top:10px"></div>
   </div>
   <div class="card" style="margin-top:14px">
@@ -1076,15 +1079,26 @@ function renderCalendar(){
     let html=`<div class="day"><div class="date">${day}</div>`;
     const yearData=modeledDates[y]||dates;
     for(const [name,d] of Object.entries(yearData)){
-      const prev=d.prev.includes(key), pred=d.pred.includes(key);
+      const prev=d.prev.includes(key);
+      // 금년도 도래일은 토·일요일인 경우 다음 월요일로 이월하여 캘린더에 표시합니다.
+      const adjustedPredKeys=new Set();
+      d.pred.forEach(v=>{
+        const [vm,vd]=v.split("-").map(Number);
+        let dt=new Date(y,vm-1,vd);
+        while(dt.getDay()===0 || dt.getDay()===6) dt.setDate(dt.getDate()+1);
+        adjustedPredKeys.add(`${String(dt.getMonth()+1).padStart(2,"0")}-${String(dt.getDate()).padStart(2,"0")}`);
+      });
+      const pred=adjustedPredKeys.has(key);
       // 갈수기 도래일 표의 전년도 도래일과 금년도 도래일을 모두 캘린더에 표시합니다.
       // 전년도는 연한 회색, 금년도는 빨간색으로 구분합니다.
+      // 금년도 도래일이 토·일요일이면 다가오는 월요일에 표시합니다.
       if(prev) html+=`<div class="event prev"><div class="event-pair"><span>${bridgeDisplay(name,directions[0])}</span><span>${bridgeDisplay(name,directions[1])}</span></div></div>`;
       if(pred) html+=`<div class="event pred"><div class="event-pair"><span>${bridgeDisplay(name,directions[0])}</span><span>${bridgeDisplay(name,directions[1])}</span></div></div>`;
     }
     html+="</div>"; box.insertAdjacentHTML("beforeend",html);
   }
 }
+
 
 /* 기상청 인증키는 사용자 화면에 노출하지 않습니다.
    운영 서버의 /api/kma/* 프록시가 인증·조회·관측지점 매핑을 담당합니다.
@@ -1150,14 +1164,45 @@ function applyQualifyingDatesToCalendar(results=[]){
   renderCalendar();
 }
 
+function formatKoreanDate(iso){
+  if(!iso) return '-';
+  const [y,m,d]=iso.split('-').map(Number);
+  return `${y}년 ${m}월 ${d}일`;
+}
+
+function selectUpcoming21st(qualifying=[]){
+  const list=(qualifying||[]).filter(q=>q&&q.start&&Number(q.days)>=21).map(q=>{
+    const reach=addDaysISO(q.start,20);
+    return {...q,reach};
+  }).sort((a,b)=>a.reach.localeCompare(b.reach));
+  if(!list.length) return null;
+  const today=new Date().toISOString().slice(0,10);
+  // 오늘 이후의 가장 가까운 21일 도달일을 우선하고, 과거 자료만 있는 경우에는 가장 최근 도달일을 사용합니다.
+  return list.find(q=>q.reach>=today) || list[list.length-1];
+}
+
+function showQualifyingDate(date, start, end){
+  const box=document.getElementById('qualifyingDateDetail');
+  if(!box) return;
+  box.textContent=`선택한 무강우 구간: ${formatKoreanDate(start)} ~ ${formatKoreanDate(end)} · 21일 도달일: ${formatKoreanDate(date)}`;
+  box.style.display='block';
+}
+
 function renderAutoPrediction(results=[]){
   const el=document.getElementById('autoPredictionResult');
   if(!results.length){el.innerHTML='<span class="small">실제 자료가 없어 예측 결과를 표시할 수 없습니다.</span>';return;}
   const rows=results.map(x=>{
-    const q=x.qualifying?.find(r=>Number(r.days)>=21); const candidate=q?.start?addDaysISO(q.start,20):(x.predictedDate||x.predictionDate||x.drySeasonStart||null);
-    return `<tr><td>${escapeHtml(x.region||'-')}</td><td>${escapeHtml(x.station||'-')}</td><td>${candidate?`<b>${escapeHtml(candidate)}</b>`:'산출 중'}</td><td>${x.max?.days?x.max.days+'일':'-'}</td><td>${x.qualifying?.filter(r=>Number(r.days)>=21).length||0}개</td></tr>`;
+    const qualifying=(x.qualifying||[]).filter(r=>Number(r.days)>=21&&r.start);
+    const selected=selectUpcoming21st(qualifying);
+    const candidate=selected?.reach||(x.predictedDate||x.predictionDate||x.drySeasonStart||null);
+    const segments=qualifying.map((q,i)=>{
+      const reach=addDaysISO(q.start,20);
+      const end=q.end||addDaysISO(q.start,Number(q.days)-1);
+      return `<button type="button" class="qualifying-segment" title="${escapeHtml(formatKoreanDate(q.start))} ~ ${escapeHtml(formatKoreanDate(end))} · 21일 도달일 ${escapeHtml(formatKoreanDate(reach))}" onclick="showQualifyingDate('${escapeHtml(reach)}','${escapeHtml(q.start)}','${escapeHtml(end)}')">${escapeHtml(formatKoreanDate(q.start))}~${escapeHtml(formatKoreanDate(end))}</button>`;
+    }).join('');
+    return `<tr><td>${escapeHtml(x.region||'-')}</td><td>${escapeHtml(x.station||'-')}</td><td>${candidate?`<b>${escapeHtml(candidate)}</b>`:'산출 중'}</td><td>${x.max?.days?x.max.days+'일':'-'}</td><td>${segments||'없음'}</td></tr>`;
   }).join('');
-  el.innerHTML=`<div class="table-wrap"><table><thead><tr><th>행정구역</th><th>관측지점</th><th>21일 도달일</th><th>최대 연속 무강우</th><th>21일 이상 구간</th></tr></thead><tbody>${rows}</tbody></table></div>`;
+  el.innerHTML=`<div class="table-wrap"><table><thead><tr><th>행정구역</th><th>관측지점</th><th>다가오는 21일 도달일</th><th>최대 연속 무강우</th><th>21일 이상 구간</th></tr></thead><tbody>${rows}</tbody></table></div><div id="qualifyingDateDetail" class="qualifying-date-detail" style="display:none"></div>`;
 }
 
 async function checkKmaConnection(){
