@@ -211,6 +211,400 @@ main{max-width:2000px;margin:22px auto;padding:0 30px}
   footer{padding:0 10px;}
 }
 
+
+/* =========================================================
+   2026 진주지사 수중기초점검 - 5단계 최종 UI 보정
+   1) 전체 화면 기본 균형
+   2) 대상교량 표
+   3) 스마트 캘린더
+   4) 기상정보·자동 갈수기 예측
+   5) 2026년 갈수기 도래일
+   ========================================================= */
+
+/* 1단계: PC/모바일 전체 폭과 카드·표·여백 균형 */
+main{
+  max-width:1400px !important;
+  margin:18px auto !important;
+  padding:0 22px !important;
+}
+.header-inner,footer{max-width:1400px !important;}
+.grid{gap:12px !important;}
+.card{padding:14px !important;border-radius:10px !important;}
+.section-title{margin:16px 0 9px !important;}
+.table-wrap{
+  width:100%;
+  overflow-x:auto;
+  overflow-y:hidden;
+  -webkit-overflow-scrolling:touch;
+  border-radius:10px;
+}
+.table-wrap table{margin:0 auto;}
+.tabs{
+  gap:6px !important;
+  margin-bottom:12px !important;
+}
+
+/* 2단계: 대상교량 5개 열 균형 + 가독성 */
+.bridge-table{
+  width:100% !important;
+  min-width:820px !important;
+  table-layout:fixed !important;
+}
+.bridge-table th:nth-child(1){width:12% !important;}
+.bridge-table th:nth-child(2){width:28% !important;}
+.bridge-table th:nth-child(3){width:34% !important;}
+.bridge-table th:nth-child(4){width:10% !important;}
+.bridge-table th:nth-child(5){width:16% !important;}
+.bridge-table th,.bridge-table td{
+  padding:9px 8px !important;
+  line-height:1.4 !important;
+}
+.bridge-table td.address{
+  white-space:normal !important;
+  word-break:keep-all !important;
+  overflow-wrap:anywhere;
+}
+.bridge-table td:nth-child(2){
+  word-break:keep-all;
+}
+.bridge-table .bridge-triple{
+  display:inline !important;
+  white-space:nowrap !important;
+}
+.bridge-table .bridge-triple-item{
+  display:inline !important;
+  white-space:nowrap !important;
+}
+.bridge-table .status{
+  white-space:nowrap;
+}
+
+/* 3단계: 스마트 캘린더 - PC는 적당한 폭, 모바일은 아담한 가로 스크롤 */
+#calendar .calendar-head{
+  align-items:center;
+}
+#calendar .calendar{
+  width:100% !important;
+  max-width:1100px !important;
+  min-width:0 !important;
+  margin:0 auto;
+  overflow:hidden;
+}
+#calendar .day{
+  min-height:125px !important;
+  padding:8px !important;
+}
+#calendar .date{
+  margin-bottom:5px !important;
+}
+#calendar .event{
+  font-size:12px !important;
+  line-height:1.35 !important;
+  margin:2px 0 !important;
+}
+#calendar .event-pair{
+  gap:8px !important;
+  flex-wrap:wrap;
+  white-space:normal !important;
+}
+#calendar .event-pair span{
+  white-space:nowrap;
+}
+#calendar .legend{
+  margin:7px 0 10px !important;
+}
+
+/* 4단계: 실제 기상정보·자동 갈수기 예측 표 */
+#rain .table-wrap{
+  overflow-x:auto !important;
+  -webkit-overflow-scrolling:touch;
+}
+#rain .card{
+  margin-top:10px !important;
+}
+#rain table{
+  min-width:760px !important;
+  table-layout:fixed !important;
+}
+#rain th,#rain td{
+  padding:8px 7px !important;
+  line-height:1.4 !important;
+}
+#rain .forecast-table{
+  min-width:760px !important;
+}
+#rain #autoPredictionResult table{
+  min-width:700px !important;
+}
+#rain .auto-status{
+  padding:5px 8px !important;
+}
+
+/* 5단계: 2026년 갈수기 도래일 - 5개 열 균형 */
+.summary-table{
+  width:100% !important;
+  min-width:760px !important;
+  table-layout:fixed !important;
+}
+.summary-table th:nth-child(1){width:18% !important;}
+.summary-table th:nth-child(2){width:25% !important;}
+.summary-table th:nth-child(3){width:19% !important;}
+.summary-table th:nth-child(4){width:19% !important;}
+.summary-table th:nth-child(5){width:19% !important;}
+.summary-table th,.summary-table td{
+  padding:8px 7px !important;
+  line-height:1.35 !important;
+}
+.summary-table .summary-date.prev{color:#1d2733 !important;}
+.summary-table .summary-date.pred{color:#f02018 !important;}
+.summary-table td:last-child{
+  color:#222 !important;
+  font-weight:700 !important;
+}
+.summary-table .summary-bridge-label{
+  min-width:0 !important;
+  width:100%;
+}
+
+/* 모바일: 표 구조는 유지하고 가로 스크롤 */
+@media(max-width:600px){
+  main{
+    max-width:none !important;
+    margin:10px auto !important;
+    padding:0 9px !important;
+  }
+  header{padding:13px 12px !important;}
+  .card{padding:11px !important;}
+  .grid{gap:9px !important;}
+  .section-title{margin:15px 0 8px !important;}
+  .table-wrap{overflow-x:auto !important;}
+
+  .bridge-table{
+    min-width:820px !important;
+  }
+  .bridge-table th,.bridge-table td{
+    padding:8px 6px !important;
+    font-size:14px !important;
+  }
+  .bridge-table th{
+    font-size:15px !important;
+  }
+
+  .summary-table{
+    min-width:760px !important;
+  }
+  .summary-table th,.summary-table td{
+    padding:8px 6px !important;
+    font-size:14px !important;
+  }
+  .summary-table th{
+    font-size:15px !important;
+  }
+  .summary-table .summary-area{
+    font-size:14px !important;
+  }
+  .summary-table .summary-detail,
+  .summary-table .summary-date,
+  .summary-table td:last-child{
+    font-size:14px !important;
+  }
+
+  #calendar .calendar-wrap{overflow-x:auto;}
+  #calendar .calendar{
+    min-width:720px !important;
+    width:720px !important;
+    max-width:none !important;
+    overflow:visible !important;
+  }
+  #calendar .dayname{
+    padding:7px 4px !important;
+    font-size:13px !important;
+  }
+  #calendar .day{
+    min-height:82px !important;
+    padding:5px !important;
+    font-size:11px !important;
+  }
+  #calendar .date{
+    font-size:12px !important;
+    margin-bottom:3px !important;
+  }
+  #calendar .event{
+    font-size:10px !important;
+    line-height:1.2 !important;
+    margin:1px 0 !important;
+  }
+  #calendar .event-pair{
+    display:block !important;
+  }
+  #calendar .event-pair span{
+    display:inline !important;
+  }
+  #calendar .event-pair span + span::before{
+    content:", ";
+  }
+  #calendar .legend{
+    font-size:12px !important;
+    gap:10px !important;
+  }
+
+  #rain table,
+  #rain .forecast-table{
+    min-width:760px !important;
+  }
+  #rain th,#rain td{
+    font-size:13px !important;
+    padding:7px 6px !important;
+  }
+}
+
+
+/* 진성교만 표기 보정: 다른 교량명에는 영향 없음 */
+.bridge-table .bridge-triple .bridge-name-3,
+.bridge-table .bridge-triple-item .bridge-name-3,
+.summary-table .summary-bridge-label .bridge-name-3,
+#calendar .event-pair .bridge-name-3{
+  letter-spacing:normal !important;
+  margin-right:0 !important;
+}
+
+/* 진성교만 정확한 붙임 표기 */
+.bridge-table .bridge-triple-item,
+.summary-table .summary-bridge-label,
+#calendar .event-pair span{
+  /* 기존 레이아웃 유지 */
+}
+
+
+/* =========================================================
+   스마트 캘린더 최종 폭·균형 보정
+   - 캘린더 자체의 좌우 폭을 넓혀 7일 칸의 균형 개선
+   - PC: 넓은 캘린더
+   - 모바일: 기존 가로 스크롤 유지
+   ========================================================= */
+
+#calendar .calendar-wrap{
+  width:100%;
+  overflow-x:auto;
+  -webkit-overflow-scrolling:touch;
+}
+
+#calendar .calendar{
+  width:100% !important;
+  max-width:1280px !important;
+  min-width:0 !important;
+  margin:0 auto;
+  table-layout:fixed;
+}
+
+/* 요일 머리글 */
+#calendar .dayname{
+  min-height:42px !important;
+  padding:10px 6px !important;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  font-size:14px !important;
+  line-height:1.2;
+}
+
+/* 날짜 칸 */
+#calendar .day{
+  min-height:145px !important;
+  padding:9px 8px !important;
+  overflow:hidden;
+  vertical-align:top;
+}
+
+/* 날짜 */
+#calendar .date{
+  font-size:15px !important;
+  line-height:1.2 !important;
+  margin-bottom:7px !important;
+}
+
+/* 일정 */
+#calendar .event{
+  font-size:12px !important;
+  line-height:1.4 !important;
+  margin:3px 0 !important;
+  padding:3px 4px !important;
+  border-radius:5px;
+}
+
+#calendar .event-pair{
+  display:block !important;
+  white-space:normal !important;
+}
+
+#calendar .event-pair span{
+  display:block !important;
+  white-space:nowrap !important;
+  overflow:hidden;
+  text-overflow:ellipsis;
+}
+
+/* 전년도/금년도 일정의 시각적 구분 */
+#calendar .event.prev{
+  background:#f4f6f8;
+  border-radius:5px;
+}
+
+#calendar .event.pred{
+  background:#fff1ef;
+  border-radius:5px;
+}
+
+/* 범례 */
+#calendar .legend{
+  max-width:1280px;
+  margin:8px auto 12px !important;
+  gap:18px !important;
+  align-items:center;
+}
+
+/* 모바일: 넓은 7열 구조를 유지하고 손가락 좌우 스크롤 */
+@media(max-width:600px){
+  #calendar .calendar-wrap{
+    overflow-x:auto !important;
+    padding-bottom:5px;
+  }
+
+  #calendar .calendar{
+    width:900px !important;
+    min-width:900px !important;
+    max-width:none !important;
+  }
+
+  #calendar .dayname{
+    min-height:38px !important;
+    padding:8px 4px !important;
+    font-size:13px !important;
+  }
+
+  #calendar .day{
+    min-height:108px !important;
+    padding:6px 5px !important;
+  }
+
+  #calendar .date{
+    font-size:13px !important;
+    margin-bottom:5px !important;
+  }
+
+  #calendar .event{
+    font-size:10px !important;
+    line-height:1.3 !important;
+    padding:2px 3px !important;
+    margin:2px 0 !important;
+  }
+
+  #calendar .legend{
+    font-size:11px !important;
+    gap:10px !important;
+  }
+}
+
 </style>
 </head>
 <body>
@@ -370,7 +764,7 @@ function renderBridges(){
     g.items.push(b);
   });
   document.getElementById("bridgeRows").innerHTML=groups.map(g=>{
-    const nameSpaced = g.name.length===3 ? `<span class="bridge-name-3">${g.name}</span>` : g.name;
+    const nameSpaced = g.name === "진성교" ? "진성교" : (g.name.length===3 ? `<span class="bridge-name-3">${g.name}</span>` : g.name);
     const bridgeNames = g.zone===8 && g.name==='진성교'
       ? g.items.map(b=>`${nameSpaced}(${b.dir})`).join(", ")
       : g.items.map(b=>`${nameSpaced}(${b.dir})`).join(", ");
@@ -386,7 +780,7 @@ function renderBridges(){
 }
 function dateSpans(arr, cls){return arr.map(x=>`<span class="summary-date ${cls}">${x.replace(/-/g,"/")}</span>`).join(", ");}
 function bridgeDisplay(name, dir){
-  const spaced = name.length===3 ? `<span class="bridge-name-3">${name}</span>` : name;
+  const spaced = name === "진성교" ? "진성교" : (name.length===3 ? `<span class="bridge-name-3">${name}</span>` : name);
   return `${spaced}(${dir})`;
 }
 function renderSummary(){
@@ -399,7 +793,7 @@ function renderSummary(){
   groups.forEach(g=>{
     g.names.forEach((n,i)=>{
       const d=dates[n];
-      const summaryName = n.length===3 ? `<span class="bridge-name-3">${n}</span>` : n;
+      const summaryName = n === "진성교" ? "진성교" : (n.length===3 ? `<span class="bridge-name-3">${n}</span>` : n);
       html+=`<tr>${i===0?`<td class="summary-area" rowspan="${g.names.length}"><b>${g.area}</b></td>`:""}<td class="summary-detail"><b><span class="summary-bridge-label">${summaryName}(부산, 순천)</span></b></td><td class="summary-detail">${dateSpans(d.prev,"prev")}</td><td class="summary-detail">${dateSpans(d.pred,"pred")}</td><td class="summary-detail">도보점검(갈수기)</td></tr>`;
     });
   });
