@@ -668,60 +668,53 @@ main{
   vertical-align:middle !important;
 }
 
-/* 현재 연속 무강우 / 최대 연속 무강우 데이터가 한 셀 안에서 유지 */
-#rain #autoWeatherRows td:nth-child(4),
-#rain #autoWeatherRows td:nth-child(5){
-  white-space:nowrap !important;
+/* 모바일/PC 공통: 현재 연속 무강우와 최대 연속 무강우를 한 행·한 칸에 세로로 정리 */
+#rain #autoWeatherRows .dry-status-cell{
+  min-width:250px !important;
+  padding:7px 9px !important;
+  white-space:normal !important;
   word-break:keep-all !important;
+  line-height:1.45 !important;
 }
-
-/* 모바일에서도 PC와 동일하게 한 셀 안에서 데이터 유지 */
+#rain #autoWeatherRows .dry-line{
+  display:flex !important;
+  align-items:flex-start !important;
+  gap:7px !important;
+  min-height:24px;
+  white-space:normal !important;
+}
+#rain #autoWeatherRows .dry-line + .dry-line{
+  margin-top:4px !important;
+  padding-top:4px !important;
+  border-top:1px solid #e5e7eb;
+}
+#rain #autoWeatherRows .dry-label{
+  flex:0 0 38px !important;
+  font-weight:700 !important;
+  color:#526274 !important;
+}
+#rain #autoWeatherRows .dry-line b{
+  color:#17365d !important;
+}
 @media(max-width:600px){
-  #calendar .calendar{
-    width:980px !important;
-    min-width:980px !important;
-    max-width:none !important;
-  }
-
-  #calendar .day{
-    min-height:112px !important;
-    padding:6px 5px !important;
-  }
-
-  #calendar .event{
-    font-size:10px !important;
-    white-space:nowrap !important;
-    overflow:visible !important;
-    margin:2px 0 !important;
-  }
-
-  #calendar .event-pair{
-    display:flex !important;
-    flex-wrap:nowrap !important;
-    gap:9px !important;
-    white-space:nowrap !important;
-    overflow:visible !important;
-  }
-
-  #calendar .event-pair span{
-    display:inline-flex !important;
-    flex:0 0 auto !important;
-    min-width:max-content !important;
-    white-space:nowrap !important;
-    overflow:visible !important;
-  }
-
   #rain .table-wrap table{
-    min-width:900px !important;
+    min-width:760px !important;
+    table-layout:fixed !important;
   }
-
-  #rain #autoWeatherRows td:nth-child(4),
-  #rain #autoWeatherRows td:nth-child(5){
-    white-space:nowrap !important;
-    font-size:13px !important;
-    line-height:1.35 !important;
+  #rain #autoWeatherRows .dry-status-cell{
+    min-width:245px !important;
+    font-size:12.5px !important;
+    line-height:1.4 !important;
+  }
+  #rain #autoWeatherRows .dry-line{
+    display:flex !important;
+    white-space:normal !important;
+  }
+  #rain #autoWeatherRows .dry-label{
+    flex-basis:36px !important;
   }
 }
+
 
 .qualifying-segment{display:inline-block;margin:2px 4px 2px 0;padding:4px 7px;border:1px solid #cbd5e1;border-radius:6px;background:#f8fafc;color:#26384a;font:inherit;font-size:13px;cursor:pointer;white-space:nowrap;}
 .qualifying-segment:hover,.qualifying-segment:focus{background:#eef4f8;border-color:#7b8da0;outline:none;}
@@ -906,7 +899,7 @@ main{
   <div class="card" style="margin-top:14px">
    <h3>지역별 실제 기상정보 자동 조회</h3>
    <div class="table-wrap"><table>
-    <thead><tr><th>행정구역</th><th>과거 기준관측소</th><th>어제 강수량</th><th>현재 연속 무강우</th><th>최대 연속 무강우</th><th>상태</th></tr></thead>
+    <thead><tr><th>행정구역</th><th>과거 기준관측소</th><th>어제 강수량</th><th>무강우 현황</th><th>상태</th></tr></thead>
     <tbody id="autoWeatherRows"><tr><td colspan="6">기상청 자료를 자동 조회하고 있습니다.</td></tr></tbody>
    </table></div>
   </div>
@@ -1118,7 +1111,7 @@ function setAutoState(state,msg){
 function renderAutoWeatherRows(results=[]){
   const rows=document.getElementById('autoWeatherRows');
   if(!results.length){
-    rows.innerHTML='<tr><td colspan="6">조회된 기상자료가 없습니다.</td></tr>';
+    rows.innerHTML='<tr><td colspan="5">조회된 기상자료가 없습니다.</td></tr>';
     document.getElementById('autoStationCount').textContent='0'; return;
   }
   document.getElementById('autoStationCount').textContent=results.filter(x=>x.station).length;
@@ -1127,7 +1120,7 @@ function renderAutoWeatherRows(results=[]){
     const cur=x.currentRun?.days?`${x.currentRun.days}일째 (${escapeHtml(x.currentRun.start||'')}~${escapeHtml(x.currentRun.end||'')})`:'현재 연속구간 없음';
     const latest=x.latestRainfall??x.recentRainfall??x.lastRainfall??'-';
     const ok=x.status==='ok'||x.station;
-    return `<tr><td><b>${escapeHtml(x.region||'-')}</b></td><td>${escapeHtml(x.station||'기준관측소')}</td><td>${escapeHtml(String(latest))}</td><td><b>${cur}</b></td><td>${max}</td><td><span class="api-status ${ok?'ok':'err'}">${ok?'정상':'확인 필요'}</span></td></tr>`;
+    return `<tr><td><b>${escapeHtml(x.region||'-')}</b></td><td>${escapeHtml(x.station||'기준관측소')}</td><td>${escapeHtml(String(latest))}</td><td class="dry-status-cell"><div class="dry-line current"><span class="dry-label">현재</span><b>${cur}</b></div><div class="dry-line max"><span class="dry-label">최대</span>${max}</div></td><td><span class="api-status ${ok?'ok':'err'}">${ok?'정상':'확인 필요'}</span></td></tr>`;
   }).join('');
 }
 
@@ -1219,7 +1212,7 @@ async function checkKmaConnection(){
     await loadShortForecast(true);
   }catch(e){
     setAutoState('err','자동 기상청 조회를 사용할 수 없습니다. 운영 서버의 /api/kma 연계를 확인해 주세요.');
-    document.getElementById('autoWeatherRows').innerHTML=`<tr><td colspan="6" style="color:#a5241b"><b>자동 조회 실패</b><br>${escapeHtml(e.message)}</td></tr>`;
+    document.getElementById('autoWeatherRows').innerHTML=`<tr><td colspan="5" style="color:#a5241b"><b>자동 조회 실패</b><br>${escapeHtml(e.message)}</td></tr>`;
     document.getElementById('autoPredictionResult').innerHTML='<span style="color:#a5241b">기상청 실제 자료가 연결되면 자동으로 결과가 표시됩니다.</span>';
   }
 }
@@ -1255,7 +1248,7 @@ async function loadLiveObservation(){
     const results=j.results||[];
     if(!results.length) throw new Error(j.message||('서버 응답 '+r.status));
     const rows=results.map(x=>{
-      if(x.status!=='ok') return `<tr><td><b>${escapeHtml(x.region||'-')}</b></td><td colspan="6" style="color:#a5241b">${escapeHtml(x.message||'초단기실황 조회 실패')}</td></tr>`;
+      if(x.status!=='ok') return `<tr><td><b>${escapeHtml(x.region||'-')}</b></td><td colspan="5" style="color:#a5241b">${escapeHtml(x.message||'초단기실황 조회 실패')}</td></tr>`;
       const bd=x.baseDate||'', bt=x.baseTime||'';
       const obsTime=bd&&bt?`${bd.slice(0,4)}-${bd.slice(4,6)}-${bd.slice(6,8)} ${bt.slice(0,2)}:${bt.slice(2,4)}`:'-';
       const rain=(x.rain1h===null||x.rain1h===undefined||x.rain1h==='')?'-':`${escapeHtml(x.rain1h)} mm`;
