@@ -605,7 +605,157 @@ main{
   }
 }
 
+
+/* =========================================================
+   최종 모바일/PC 보정
+   1. 스마트 캘린더: 교량명 + 방향을 절대 분리하지 않음
+      예) 000교(부산), 00교(부산), 000교(부산), 00교(순천)
+   2. 지역별 실제 기상정보: 모바일에서도
+      현재 연속 무강우 / 최대 연속 무강우를 한 셀 안에 유지
+   ========================================================= */
+
+/* 스마트 캘린더의 교량명과 (부산)/(순천)을 하나의 묶음으로 표시 */
+#calendar .event-pair{
+  display:flex !important;
+  align-items:center;
+  justify-content:flex-start;
+  gap:12px !important;
+  flex-wrap:nowrap !important;
+  white-space:nowrap !important;
+  width:100%;
+}
+
+#calendar .event-pair span{
+  display:inline-flex !important;
+  align-items:center;
+  flex:0 0 auto;
+  width:auto !important;
+  min-width:max-content !important;
+  white-space:nowrap !important;
+  overflow:visible !important;
+  text-overflow:clip !important;
+}
+
+/* 교량명과 방향 사이에 CSS로 불필요한 분리/줄바꿈이 생기지 않도록 */
+#calendar .event-pair .bridge-name-3{
+  display:inline !important;
+  white-space:nowrap !important;
+  letter-spacing:normal !important;
+  margin-right:0 !important;
+}
+
+/* 스마트 캘린더 한 칸 안의 일정은 보기 좋게 정렬 */
+#calendar .event{
+  overflow:visible !important;
+  white-space:nowrap !important;
+}
+#calendar .event.prev,
+#calendar .event.pred{
+  padding:4px 6px !important;
+}
+
+/* 실제 기상정보 자동조회 표 */
+#rain .table-wrap{
+  overflow-x:auto !important;
+  -webkit-overflow-scrolling:touch;
+}
+#rain .table-wrap table{
+  min-width:900px !important;
+  table-layout:fixed !important;
+}
+#rain .table-wrap table th,
+#rain .table-wrap table td{
+  vertical-align:middle !important;
+}
+
+/* 현재 연속 무강우 / 최대 연속 무강우 데이터가 한 셀 안에서 유지 */
+#rain #autoWeatherRows td:nth-child(4),
+#rain #autoWeatherRows td:nth-child(5){
+  white-space:nowrap !important;
+  word-break:keep-all !important;
+}
+
+/* 모바일에서도 PC와 동일하게 한 셀 안에서 데이터 유지 */
+@media(max-width:600px){
+  #calendar .calendar{
+    width:980px !important;
+    min-width:980px !important;
+    max-width:none !important;
+  }
+
+  #calendar .day{
+    min-height:112px !important;
+    padding:6px 5px !important;
+  }
+
+  #calendar .event{
+    font-size:10px !important;
+    white-space:nowrap !important;
+    overflow:visible !important;
+    margin:2px 0 !important;
+  }
+
+  #calendar .event-pair{
+    display:flex !important;
+    flex-wrap:nowrap !important;
+    gap:9px !important;
+    white-space:nowrap !important;
+    overflow:visible !important;
+  }
+
+  #calendar .event-pair span{
+    display:inline-flex !important;
+    flex:0 0 auto !important;
+    min-width:max-content !important;
+    white-space:nowrap !important;
+    overflow:visible !important;
+  }
+
+  #rain .table-wrap table{
+    min-width:900px !important;
+  }
+
+  #rain #autoWeatherRows td:nth-child(4),
+  #rain #autoWeatherRows td:nth-child(5){
+    white-space:nowrap !important;
+    font-size:13px !important;
+    line-height:1.35 !important;
+  }
+}
+
 </style>
+
+<style id="bridge-name-normal-weight">
+/* 3종 수중기초점검 대상 현황: 교량명은 주변 글자와 같은 일반 굵기 */
+#bridges .bridge-table td:nth-child(2),
+#bridges .bridge-table td:nth-child(2) * {
+  font-weight: 400 !important;
+}
+</style>
+
+
+<style id="bridge-name-spacing-normal">
+/* 3종 수중기초점검 대상 현황: 교량명 띄어쓰기 제거 */
+#bridges .bridge-table td:nth-child(2) .bridge-name-3 {
+  letter-spacing: normal !important;
+  margin-right: 0 !important;
+  word-spacing: normal !important;
+}
+</style>
+
+
+<style id="summary-table-font-weight-lighter">
+/* 2026년 갈수기 도래일: 아래 데이터 행만 한 단계 연하게 */
+#dashboard .summary-table tbody td,
+#dashboard .summary-table tbody td *,
+#dashboard .summary-table tbody .summary-area,
+#dashboard .summary-table tbody .summary-detail,
+#dashboard .summary-table tbody .summary-bridge-label,
+#dashboard .summary-table tbody .summary-date {
+  font-weight: 400 !important;
+}
+</style>
+
 </head>
 <body>
 <header>
@@ -652,7 +802,7 @@ main{
    <select id="zoneFilter"><option value="">전체 구역</option></select>
    <select id="typeFilter"><option value="">전체</option><option value="갈수기">갈수기에만 도보점검</option><option value="상시">상시 도보점검</option></select>
   </div>
-  <div class="table-wrap"><table class="bridge-table"><thead><tr><th>구역</th><th>교량명</th><th>주소</th><th>교각수</th><th>점검조건</th></tr></thead><tbody id="bridgeRows"></tbody></table></div>
+  <div class="table-wrap"><table class="bridge-table"><thead><tr><th>구역</th><th>교량명</th><th>주소</th><th>교각수</th><th>점검방법</th></tr></thead><tbody id="bridgeRows"></tbody></table></div>
  </section>
 
  <section id="calendar" class="panel">
@@ -771,7 +921,7 @@ function renderBridges(){
     const b=g.items[0];
     return `<tr>
       <td>${g.zone}구역</td>
-      <td><b>${bridgeNames}</b></td>
+      <td>${bridgeNames}</td>
       <td class="address">${g.addr}</td>
       <td>${b.piers}</td>
       <td><span class="status ${b.type==='갈수기'?'dry':'always'}">${b.type==='갈수기'?'갈수기 도보점검':'상시 도보점검'}</span></td>
