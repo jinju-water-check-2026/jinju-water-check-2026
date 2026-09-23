@@ -660,13 +660,29 @@ main{
   -webkit-overflow-scrolling:touch;
 }
 #rain .table-wrap table{
-  min-width:900px !important;
-  table-layout:fixed !important;
+  min-width:1320px !important;
+  width:max-content !important;
+  table-layout:auto !important;
+  border-collapse:collapse !important;
 }
 #rain .table-wrap table th,
 #rain .table-wrap table td{
   vertical-align:middle !important;
+  white-space:nowrap !important;
+  word-break:keep-all !important;
 }
+#rain .table-wrap table th:nth-child(1),
+#rain .table-wrap table td:nth-child(1){min-width:145px !important;}
+#rain .table-wrap table th:nth-child(2),
+#rain .table-wrap table td:nth-child(2){min-width:155px !important;}
+#rain .table-wrap table th:nth-child(3),
+#rain .table-wrap table td:nth-child(3){min-width:120px !important;}
+#rain .table-wrap table th:nth-child(4),
+#rain .table-wrap table td:nth-child(4){min-width:285px !important; width:285px !important;}
+#rain .table-wrap table th:nth-child(5),
+#rain .table-wrap table td:nth-child(5){min-width:285px !important; width:285px !important;}
+#rain .table-wrap table th:nth-child(6),
+#rain .table-wrap table td:nth-child(6){min-width:100px !important;}
 
 /* 현재 연속 무강우 / 최대 연속 무강우 데이터가 한 셀 안에서 유지 */
 #rain #autoWeatherRows td:nth-child(4),
@@ -711,8 +727,20 @@ main{
     overflow:visible !important;
   }
 
+  #rain .table-wrap{
+    width:100% !important;
+    max-width:100% !important;
+    overflow-x:auto !important;
+    overflow-y:hidden !important;
+    -webkit-overflow-scrolling:touch !important;
+    touch-action:pan-x !important;
+  }
+
   #rain .table-wrap table{
-    min-width:900px !important;
+    min-width:1320px !important;
+    width:max-content !important;
+    max-width:none !important;
+    table-layout:auto !important;
   }
 
   #rain #autoWeatherRows td:nth-child(4),
