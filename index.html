@@ -756,6 +756,68 @@ main{
 }
 </style>
 
+
+<style id="smart-calendar-left-align">
+/* 스마트 점검 캘린더: 제목 시작선과 달력/범례를 좌측으로 맞춤 */
+#calendar .calendar-head{
+  display:flex !important;
+  justify-content:flex-start !important;
+  align-items:flex-start !important;
+  text-align:left !important;
+}
+#calendar .calendar-head > div:first-child{
+  text-align:left !important;
+}
+#calendar .calendar{
+  margin-left:0 !important;
+  margin-right:auto !important;
+}
+#calendar .legend{
+  justify-content:flex-start !important;
+  text-align:left !important;
+  margin-left:0 !important;
+  margin-right:auto !important;
+}
+#calendar .legend span{
+  display:inline-flex !important;
+  align-items:center !important;
+}
+#calendar .legend .dot{
+  margin-left:0 !important;
+}
+
+/* 모바일에서도 동일하게 좌측 정렬 */
+@media (max-width:760px){
+  #calendar .calendar-head{
+    justify-content:flex-start !important;
+    text-align:left !important;
+  }
+  #calendar .calendar{
+    margin-left:0 !important;
+    margin-right:auto !important;
+  }
+  #calendar .legend{
+    justify-content:flex-start !important;
+    margin-left:0 !important;
+  }
+}
+</style>
+
+
+<style id="main-tabs-and-forecast-3hour">
+/* 메인 버튼: 수중기초점검 관련 기준 제목과 동일한 글자 크기 */
+.tabs .tab{
+  font-size:19px !important;
+}
+
+/* 모바일에서도 메인 버튼 글자 크기 유지 */
+@media (max-width:600px){
+  .tabs .tab{
+    font-size:19px !important;
+  }
+}
+</style>
+
 </head>
 <body>
 <header>
@@ -1092,8 +1154,14 @@ async function loadShortForecast(silent=false){
     const r=await fetch(`${KMA_PROXY_BASE}/forecast?region=${encodeURIComponent(area)}`,{cache:'no-store'});
     const j=await r.json().catch(()=>({}));
     if(!r.ok||!j.ok)throw new Error(j.message||('서버 응답 '+r.status));
-    const rows=(j.items||[]).slice(0,40).map(x=>`<tr><td>${escapeHtml(x.date)}</td><td>${escapeHtml(x.time)}</td><td>${x.pop??'-'}%</td><td>${escapeHtml(x.pty??'-')}</td><td>${escapeHtml(x.pcp??'-')}</td><td>${x.tmp??'-'}℃</td><td>${x.wsd??'-'}m/s</td></tr>`).join('');
-    el.innerHTML=`<div class="table-wrap"><table class="forecast-table"><thead><tr><th>예보일</th><th>시각</th><th>강수확률</th><th>강수형태</th><th>강수량</th><th>기온</th><th>풍속</th></tr></thead><tbody>${rows||'<tr><td colspan="7">예보자료가 없습니다.</td></tr>'}</tbody></table></div>`;
+    const forecastItems=(j.items||[]).filter((x,i)=>{
+      const hhmm=String(x.time??'').replace(/[^0-9]/g,'').padStart(4,'0').slice(0,4);
+      const hour=Number(hhmm.slice(0,2));
+      const minute=Number(hhmm.slice(2,4));
+      return minute===0 && hour%3===0;
+    });
+    const rows=forecastItems.slice(0,40).map(x=>`<tr><td>${escapeHtml(x.date)}</td><td>${escapeHtml(x.time)}</td><td>${x.pop??'-'}%</td><td>${escapeHtml(x.pty??'-')}</td><td>${escapeHtml(x.pcp??'-')}</td><td>${x.tmp??'-'}℃</td><td>${x.wsd??'-'}m/s</td></tr>`).join('');
+    el.innerHTML=`<div class="table-wrap"><table class="forecast-table"><thead><tr><th>예보일</th><th>시각(3시간 단위)</th><th>강수확률</th><th>강수형태</th><th>강수량</th><th>기온</th><th>풍속</th></tr></thead><tbody>${rows||'<tr><td colspan="7">예보자료가 없습니다.</td></tr>'}</tbody></table></div>`;
   }catch(e){el.innerHTML=`<span style="color:#a5241b"><b>단기예보 자동 연동 실패</b><br>${escapeHtml(e.message)}</span>`;}
 }
 
